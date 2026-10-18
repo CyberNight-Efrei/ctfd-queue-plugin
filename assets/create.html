@@ -1,7 +1,40 @@
 {% extends "admin/challenges/create.html" %}
 
 {% block value %}
-{{ super() }}
+<div class="form-group" id="queue-static-value-panel">
+  <label for="queue-static-value">Value<br>
+    <small class="form-text text-muted">Points awarded using static scoring.</small>
+  </label>
+  <input type="number" class="form-control" id="queue-static-value" name="value" placeholder="Enter value" required>
+</div>
+
+<div class="form-group">
+  <label for="queue-scoring-function">Scoring function</label>
+  <select class="form-control custom-select" id="queue-scoring-function" name="function">
+    <option value="static" selected>Static</option>
+    <option value="linear">Linear decay</option>
+    <option value="logarithmic">Logarithmic decay</option>
+  </select>
+  <small class="form-text text-muted">
+    Static keeps the configured value. Linear and logarithmic use the same CTFd formulas as native dynamic challenges.
+  </small>
+</div>
+
+<div id="queue-dynamic-value-panel" hidden>
+  <div class="form-group">
+    <label for="queue-initial">Initial value</label>
+    <input type="number" class="form-control" id="queue-initial" name="initial" min="0" value="100" disabled>
+  </div>
+  <div class="form-group">
+    <label for="queue-decay">Decay</label>
+    <input type="number" class="form-control" id="queue-decay" name="decay" min="1" value="10" disabled>
+  </div>
+  <div class="form-group">
+    <label for="queue-minimum">Minimum value</label>
+    <input type="number" class="form-control" id="queue-minimum" name="minimum" min="0" value="10" disabled>
+  </div>
+</div>
+
 <hr>
 <h5>Queue settings</h5>
 <p class="text-muted">The challenge keeps CTFd's standard fields and native static/dynamic scoring. Only a selected participant may submit a flag.</p>
