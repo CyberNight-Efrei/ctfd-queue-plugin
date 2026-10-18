@@ -27,7 +27,7 @@
     <div class="queue-stat-card"><span class="queue-stat-label">Waiting</span><strong id="queue-waiting-count">{{ state.waiting|length }}</strong></div>
     <div class="queue-stat-card"><span class="queue-stat-label">Currently selected</span><strong id="queue-selected-count">{{ state.selected|length }}</strong></div>
     <div class="queue-stat-card"><span class="queue-stat-label">Round</span><strong id="queue-round-number">{{ state.challenge.round_number }}</strong></div>
-    <div class="queue-stat-card"><span class="queue-stat-label">Time since last draw</span><strong id="queue-elapsed">{{ state.challenge.elapsed_seconds }}s</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Time since last draw</span><strong id="queue-elapsed">{{ (state.challenge.elapsed_seconds|string + "s") if state.challenge.has_drawn else "No draw yet" }}</strong></div>
   </div>
 
   <div class="queue-settings-strip">
