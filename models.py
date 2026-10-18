@@ -28,7 +28,10 @@ class QueueChallengeModel(Challenges):
         nullable=False,
         default="You have been selected! You may now attempt this challenge.",
     )
+    # last_draw_at anchors the automatic cadence; last_selection_at is the last
+    # round that actually selected participants (None until the first draw).
     last_draw_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_selection_at = db.Column(db.DateTime, nullable=True)
     round_number = db.Column(db.Integer, nullable=False, default=0)
 
 
