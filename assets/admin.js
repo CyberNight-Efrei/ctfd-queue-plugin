@@ -98,11 +98,11 @@
   }
 
   var liveCounters = {
-    elapsedSeconds: 0,
-    nextDrawSeconds: 0,
+    elapsedSeconds: Math.max(0, Number(root.dataset.elapsedSeconds) || 0),
+    nextDrawSeconds: Math.max(0, Number(root.dataset.nextDrawInSeconds) || 0),
     syncedAt: Date.now(),
-    hasDrawn: false,
-    automatic: false
+    hasDrawn: root.dataset.hasDrawn === "true",
+    automatic: root.dataset.queueMode === "automatic"
   };
   var refreshInProgress = false;
   var autoRefreshTimer = null;
@@ -394,6 +394,7 @@
     });
   }
 
+  renderCounters();
   refresh();
   window.setInterval(tickCounters, 1000);
 })();
