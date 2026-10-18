@@ -4,7 +4,7 @@ import os
 import threading
 import time
 
-from flask import Blueprint, abort, render_template
+from flask import Blueprint, abort, render_template, request
 
 from CTFd.api import CTFd_API_v1
 from CTFd.plugins import (
@@ -13,6 +13,7 @@ from CTFd.plugins import (
 )
 from CTFd.plugins.challenges import CHALLENGE_CLASSES, CTFdStandardChallenge
 from CTFd.utils.decorators import admins_only
+from CTFd.utils.user import get_current_team, get_current_user, is_admin
 
 from .api import queue_namespace
 from .models import QueueChallengeModel, QueueEntry, db
@@ -144,11 +145,11 @@ class QueueChallenge(CTFdStandardChallenge):
                 state="selected",
             ).first()
             if entry is None:
-                return False, "You must be selected from the queue before attempting this challenge."
+                abort(403, description="You must be selected from the queue before attempting this challenge.")
             if get_config_user_mode() == "teams":
                 team = get_current_team()
                 if team is None or entry.team_id != team.id:
-                    return False, "The selected queue entry does not match your current team."
+                    abort(403, description="The selected queue entry does not match your current team.")
         return super().attempt(challenge, request)
 
     @classmethod
@@ -273,4 +274,39 @@ def load(app):
         )
 
     app.register_blueprint(page_blueprint)
+
+    @app.before_request
+    def enforce_queue_selection_before_ctfd_attempt_limits():
+        # CTFd increments anti-bruteforce and max-attempt counters before calling
+        # a challenge's attempt() method. Check selection first so a teammate
+        # cannot exhaust a selected player's attempt budget with forged requests.
+        if (
+            request.method != "POST"
+            or not request.path.endswith("/api/v1/challenges/attempt")
+        ):
+            return None
+        data = request.get_json(silent=True) if request.is_json else request.form
+        try:
+            challenge_id = int((data or {}).get("challenge_id"))
+        except (TypeError, ValueError):
+            return None
+        challenge = QueueChallengeModel.query.filter_by(id=challenge_id).first()
+        if challenge is None:
+            return None
+        if is_admin() and request.args.get("preview"):
+            return None
+        user = get_current_user()
+        if user is None:
+            return None
+        entry = QueueEntry.query.filter_by(
+            challenge_id=challenge.id, user_id=user.id, state="selected"
+        ).first()
+        if entry is None:
+            abort(403, description="You must be selected from the queue before attempting this challenge.")
+        if get_config_user_mode() == "teams":
+            team = get_current_team()
+            if team is None or entry.team_id != team.id:
+                abort(403, description="The selected queue entry does not match your current team.")
+        return None
+
     _start_scheduler_once(app)
