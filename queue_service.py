@@ -211,7 +211,7 @@ class QueueService:
                 "state": "needs_team",
                 "can_join": False,
                 "can_leave": False,
-                "can_submit": False,
+                "can_submit": True,
                 "queue_mode": challenge.queue_mode,
                 "batch_size": challenge.batch_size,
                 "interval_seconds": challenge.interval_seconds,
@@ -228,7 +228,7 @@ class QueueService:
                 "state": "not_joined",
                 "can_join": True,
                 "can_leave": False,
-                "can_submit": False,
+                "can_submit": True,
                 "queue_mode": challenge.queue_mode,
                 "batch_size": challenge.batch_size,
                 "interval_seconds": challenge.interval_seconds,
@@ -242,7 +242,7 @@ class QueueService:
                 "state": "registered_by_teammate",
                 "can_join": False,
                 "can_leave": False,
-                "can_submit": False,
+                "can_submit": True,
                 "username": getattr(row.user, "name", None),
                 "queue_mode": challenge.queue_mode,
                 "show_position": bool(challenge.show_position),
@@ -268,7 +268,7 @@ class QueueService:
                     "state": "waiting",
                     "can_join": False,
                     "can_leave": True,
-                    "can_submit": False,
+                    "can_submit": True,
                     "position": position,
                     "estimated_wait_seconds": (
                         QueueService._estimate_wait_seconds(challenge, position)
@@ -294,7 +294,7 @@ class QueueService:
                     "state": "completed",
                     "can_join": False,
                     "can_leave": False,
-                    "can_submit": False,
+                    "can_submit": True,
                 }
             )
         else:
@@ -303,7 +303,7 @@ class QueueService:
                     "state": "not_joined",
                     "can_join": True,
                     "can_leave": False,
-                    "can_submit": False,
+                    "can_submit": True,
                 }
             )
         return base
@@ -448,33 +448,39 @@ class QueueService:
             # previous round's still-selected entries before drawing the next
             # batch, even when no one is waiting for the next round.
             previously_selected = QueueService.selected_entries(challenge.id)
-            evicted_count = len(previously_selected)
+            evicted_contexts = [
+                (entry.id, entry.user_id, entry.team_id, entry.round_number)
+                for entry in previously_selected
+            ]
+            evicted_count = len(evicted_contexts)
             for entry in previously_selected:
                 entry.state = "left"
                 entry.left_at = now
-                log.info(
-                    "Selected participant evicted from queue at next iteration "
-                    "challenge_id=%s entry_id=%s user_id=%s team_id=%s round_number=%s",
-                    challenge.id,
-                    entry.id,
-                    entry.user_id,
-                    entry.team_id,
-                    entry.round_number,
-                )
 
             waiters = QueueService.waiting_entries(challenge.id)
+            source = "automatic" if automatic else "manual"
             if not waiters:
                 if only_if_due or evicted_count:
                     # Empty automatic rounds still advance the timer, so a new
                     # signup does not get selected immediately after a long idle.
                     challenge.last_draw_at = now
                     db.session.commit()
+                    for entry_id, user_id, team_id, round_number in evicted_contexts:
+                        log.info(
+                            "Selected participant evicted from queue at next iteration "
+                            "challenge_id=%s entry_id=%s user_id=%s team_id=%s round_number=%s",
+                            challenge_id,
+                            entry_id,
+                            user_id,
+                            team_id,
+                            round_number,
+                        )
                     if evicted_count:
                         log.info(
                             "Queue iteration completed with no new selections "
                             "challenge_id=%s source=%s evicted_count=%s",
-                            challenge.id,
-                            "automatic" if automatic else "manual",
+                            challenge_id,
+                            source,
                             evicted_count,
                         )
                 else:
@@ -507,13 +513,23 @@ class QueueService:
             selected = len(picked)
             log_context = (
                 challenge.id,
-                "automatic" if automatic else "manual",
+                source,
                 challenge.round_number,
                 selected,
                 max(0, len(waiters) - selected),
                 evicted_count,
             )
             db.session.commit()
+            for entry_id, user_id, team_id, round_number in evicted_contexts:
+                log.info(
+                    "Selected participant evicted from queue at next iteration "
+                    "challenge_id=%s entry_id=%s user_id=%s team_id=%s round_number=%s",
+                    challenge_id,
+                    entry_id,
+                    user_id,
+                    team_id,
+                    round_number,
+                )
             if selected or evicted_count:
                 log.info(
                     "Queue draw completed challenge_id=%s source=%s round_number=%s "
