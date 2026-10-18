@@ -6,7 +6,7 @@ from html import escape as escape_html
 
 from sqlalchemy.exc import IntegrityError
 
-from CTFd.models import Notifications, Users, db
+from CTFd.models import Notifications, Solves, Users, db
 from CTFd.utils import get_config
 from CTFd.utils.user import get_current_team, get_current_user
 
@@ -72,6 +72,22 @@ class QueueService:
         if challenge is None:
             raise QueueError("Queue challenge not found.")
         return challenge
+
+    @staticmethod
+    def has_solved_challenge(challenge, user):
+        """Whether this CTFd scoring account has already solved the challenge."""
+        account_id = getattr(user, "account_id", None)
+        if account_id is None:
+            account_id = getattr(user, "id", None)
+        if account_id is None:
+            return False
+        return (
+            Solves.query.filter_by(
+                challenge_id=challenge.id,
+                account_id=account_id,
+            ).first()
+            is not None
+        )
 
     @staticmethod
     def waiting_entries(challenge_id):
@@ -215,6 +231,22 @@ class QueueService:
         if user is None:
             raise QueueError("Authentication required.")
         challenge = QueueService.get_challenge(challenge_id)
+        common_status = {
+            "can_submit": True,
+            "queue_mode": challenge.queue_mode,
+            "batch_size": challenge.batch_size,
+            "interval_seconds": challenge.interval_seconds,
+            "show_position": bool(challenge.show_position),
+            "show_eta": bool(challenge.show_eta),
+            "selected_message": challenge.selected_message or "",
+        }
+        if QueueService.has_solved_challenge(challenge, user):
+            return {
+                **common_status,
+                "state": "completed",
+                "can_join": False,
+                "can_leave": False,
+            }
         try:
             account_key = QueueService.account_key(user, team)
         except QueueError:
@@ -345,6 +377,10 @@ class QueueService:
         events = []
         try:
             challenge = QueueService.get_challenge(challenge_id, lock=True)
+            if QueueService.has_solved_challenge(challenge, user):
+                raise QueueError(
+                    "You or your team have already solved this challenge and cannot rejoin its queue."
+                )
             account_key = QueueService.account_key(user, team)
             row = QueueEntry.query.filter_by(
                 challenge_id=challenge.id, account_key=account_key
@@ -650,6 +686,10 @@ class QueueService:
             user = Users.query.filter_by(id=user_id).first()
             if user is None:
                 raise QueueError("User not found.")
+            if QueueService.has_solved_challenge(challenge, user):
+                raise QueueError(
+                    "This user or their team has already solved the challenge and cannot rejoin its queue."
+                )
             team = getattr(user, "team", None)
             account_key = QueueService.account_key(user, team)
             row = QueueEntry.query.filter_by(
