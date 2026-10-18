@@ -14,7 +14,6 @@ from CTFd.plugins import (
 )
 from CTFd.plugins.challenges import CHALLENGE_CLASSES, CTFdStandardChallenge
 from CTFd.utils.decorators import admins_only
-from CTFd.utils.user import get_current_team, get_current_user, is_admin
 
 from .api import queue_namespace
 from .models import QueueChallengeModel, QueueEntry, db
