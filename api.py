@@ -233,6 +233,34 @@ class AdminQueueAdvance(Resource):
 
 
 
+
+@queue_namespace.route("/admin/users/suggest")
+class AdminQueueUserSuggestions(Resource):
+    @admins_only
+    def get(self):
+        query = str(request.args.get("q") or "").strip()
+        if not query:
+            return {"success": True, "data": {"users": []}}
+
+        # Return only a small prefix-matched result set for the administrator's
+        # autocomplete field; do not expose a full user directory to the page.
+        users = (
+            Users.query.filter(Users.name.ilike(query + "%"))
+            .order_by(Users.name.asc())
+            .limit(15)
+            .all()
+        )
+        return {
+            "success": True,
+            "data": {
+                "users": [
+                    {"id": user.id, "username": user.name}
+                    for user in users
+                ]
+            },
+        }
+
+
 @queue_namespace.route("/admin/challenges/<int:challenge_id>/flag")
 class AdminQueueCopyFlag(Resource):
     @admins_only
