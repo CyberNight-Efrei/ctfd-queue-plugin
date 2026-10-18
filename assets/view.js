@@ -145,6 +145,17 @@ CTFd._internal.challenge.submit = function (preview) {
     var idElement = document.getElementById("queue-challenge-id");
     var panel = document.getElementById("queue-plugin-panel");
     if (!action || !idElement || action.dataset.queueBound === "1") return;
+    var currentUserId = Number(window.init && window.init.userId);
+    if (!Number.isInteger(currentUserId) || currentUserId <= 0) {
+      action.disabled = true;
+      action.textContent = "Sign in to join";
+      var loginMessage = document.getElementById("queue-status-message");
+      if (loginMessage) {
+        loginMessage.className = "alert alert-info mb-2";
+        setText(loginMessage, "Sign in to register in this challenge queue.");
+      }
+      return;
+    }
     if (panel && panel.dataset.preview === "true") {
       action.disabled = true;
       action.textContent = "Queue disabled in preview";
