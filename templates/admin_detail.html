@@ -36,11 +36,11 @@
     <span><strong>Configured interval</strong> <span id="queue-interval">{{ challenge.interval_seconds }} seconds</span></span>
     <span><strong>Next automatic draw</strong> <span id="queue-next-draw">{{ state.challenge.next_draw_in_seconds }}s</span></span>
   </div>
-  <p class="queue-admin-hint">The interval is an estimate only in manual mode. Advancing a queue selects the first configured batch of waiting participants. Selected participants can submit flags until they solve the challenge or an administrator revokes their selection.</p>
+  <p class="queue-admin-hint">The interval is an estimate only in manual mode. Advancing a queue evicts participants still selected from the previous round, then selects the next configured batch. Queue state never restricts flag submissions: any eligible player or teammate can submit a flag at any time.</p>
 
   <div class="queue-panel">
     <div class="queue-panel-header">
-      <div><h2>Selected participants</h2><p>Participants with permission to attempt this challenge.</p></div>
+      <div><h2>Selected participants</h2><p>Participants selected for the current round. Selection does not gate flag submissions.</p></div>
       <span class="queue-badge queue-badge-selected">Selected</span>
     </div>
     <div class="table-responsive">
