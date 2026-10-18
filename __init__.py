@@ -245,17 +245,18 @@ class QueueChallenge(CTFdStandardChallenge):
 
     @classmethod
     def delete(cls, challenge):
+        challenge_id = challenge.id
         try:
-            QueueEntry.query.filter_by(challenge_id=challenge.id).delete(
+            QueueEntry.query.filter_by(challenge_id=challenge_id).delete(
                 synchronize_session=False
             )
             db.session.commit()
             result = super().delete(challenge)
-            log.info("Queue challenge deleted challenge_id=%s", challenge.id)
+            log.info("Queue challenge deleted challenge_id=%s", challenge_id)
             return result
         except Exception:
             db.session.rollback()
-            log.exception("Failed to delete queue challenge challenge_id=%s", challenge.id)
+            log.exception("Failed to delete queue challenge challenge_id=%s", challenge_id)
             raise
 
 
