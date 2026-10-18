@@ -432,23 +432,54 @@ class QueueService:
         events = []
         try:
             challenge = QueueService.get_challenge(challenge_id, lock=True)
+            challenge_id = challenge.id
             now = _utcnow()
             interval = max(1, int(challenge.interval_seconds or 1))
             if only_if_due:
                 last_draw = challenge.last_draw_at or now
-                if challenge.queue_mode != "automatic" or now < last_draw + timedelta(seconds=interval):
+                if (
+                    challenge.queue_mode != "automatic"
+                    or now < last_draw + timedelta(seconds=interval)
+                ):
                     db.session.rollback()
-                    return {"selected": 0, "due": False}
+                    return {"selected": 0, "evicted": 0, "due": False}
+
+            # A selection lasts until the next queue iteration. Remove the
+            # previous round's still-selected entries before drawing the next
+            # batch, even when no one is waiting for the next round.
+            previously_selected = QueueService.selected_entries(challenge.id)
+            evicted_count = len(previously_selected)
+            for entry in previously_selected:
+                entry.state = "left"
+                entry.left_at = now
+                log.info(
+                    "Selected participant evicted from queue at next iteration "
+                    "challenge_id=%s entry_id=%s user_id=%s team_id=%s round_number=%s",
+                    challenge.id,
+                    entry.id,
+                    entry.user_id,
+                    entry.team_id,
+                    entry.round_number,
+                )
+
             waiters = QueueService.waiting_entries(challenge.id)
             if not waiters:
-                if only_if_due:
+                if only_if_due or evicted_count:
                     # Empty automatic rounds still advance the timer, so a new
                     # signup does not get selected immediately after a long idle.
                     challenge.last_draw_at = now
                     db.session.commit()
+                    if evicted_count:
+                        log.info(
+                            "Queue iteration completed with no new selections "
+                            "challenge_id=%s source=%s evicted_count=%s",
+                            challenge.id,
+                            "automatic" if automatic else "manual",
+                            evicted_count,
+                        )
                 else:
                     db.session.rollback()
-                return {"selected": 0, "due": True}
+                return {"selected": 0, "evicted": evicted_count, "due": True}
 
             batch_size = max(1, int(challenge.batch_size or 1))
             picked = waiters[:batch_size]
@@ -466,7 +497,9 @@ class QueueService:
                         QueueService._notification_for(
                             entry,
                             "You have been selected!",
-                            "You have been selected and can now submit your flag.",
+                            "You have been selected for this queue round. "
+                            "You can submit the flag at any time, independently "
+                            "of your queue state.",
                         )
                     )
             QueueService._resequence(challenge.id)
@@ -478,20 +511,22 @@ class QueueService:
                 challenge.round_number,
                 selected,
                 max(0, len(waiters) - selected),
+                evicted_count,
             )
             db.session.commit()
-            if selected:
+            if selected or evicted_count:
                 log.info(
                     "Queue draw completed challenge_id=%s source=%s round_number=%s "
-                    "selected_count=%s remaining_waiting=%s",
+                    "selected_count=%s remaining_waiting=%s evicted_previous_count=%s",
                     *log_context,
                 )
         except Exception:
             db.session.rollback()
+            log.exception("Failed to advance queue challenge_id=%s", challenge_id)
             raise
 
         _publish_notifications(events)
-        return {"selected": selected, "due": True}
+        return {"selected": selected, "evicted": evicted_count, "due": True}
 
     @staticmethod
     def advance(challenge_id):
