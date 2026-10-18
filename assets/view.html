@@ -1,7 +1,7 @@
 {% extends "challenge.html" %}
 
 {% block input %}
-<div id="queue-plugin-panel" class="mb-3" aria-live="polite">
+<div id="queue-plugin-panel" class="mb-3" aria-live="polite" data-preview="{{ 'true' if request.path.startswith('/admin/challenges/preview/') else 'false' }}">
   <div id="queue-status-message" class="alert alert-secondary mb-2">Loading queue status…</div>
   <div id="queue-details" class="small text-muted mb-2"></div>
 </div>
