@@ -83,3 +83,28 @@ class QueueEntry(db.Model):
                 self.id, self.challenge_id, self.account_key, self.state
             )
         )
+
+
+
+class QueueNotification(db.Model):
+    """Private queue notification delivered only to its recipient."""
+
+    __tablename__ = "queue_notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    recipient_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    queue_entry_id = db.Column(
+        db.Integer,
+        db.ForeignKey("queue_entries.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    title = db.Column(db.String(160), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    acknowledged_at = db.Column(db.DateTime, nullable=True, index=True)
