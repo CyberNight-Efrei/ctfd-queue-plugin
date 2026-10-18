@@ -169,6 +169,9 @@ CTFd._internal.challenge.submit = function (preview) {
         });
     });
     refresh();
+    window.setInterval(function () {
+      if (document.getElementById("queue-action-button")) refresh();
+    }, 10000);
   }
 
   if (window.CTFd && CTFd.lib && CTFd.lib.$) {
