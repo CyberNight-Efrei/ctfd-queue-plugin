@@ -159,6 +159,13 @@ CTFd._internal.challenge.submit = function (preview) {
         message.className = "alert alert-info mb-2";
         setText(message, "You have already completed this queue challenge.");
         break;
+      case "evicted":
+        action.textContent = "Removed from queue";
+        action.classList.add("btn-secondary");
+        action.disabled = true;
+        message.className = "alert alert-info mb-2";
+        setText(message, "Your queue participation has ended for this challenge. You may still submit the flag at any time.");
+        break;
       case "needs_team":
         action.textContent = "Join a team first";
         action.classList.add("btn-secondary");
