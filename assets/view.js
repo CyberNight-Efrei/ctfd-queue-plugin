@@ -18,6 +18,29 @@ CTFd._internal.challenge.submit = function (preview) {
   var currentStatus = null;
   var busy = false;
 
+  var recentFailureLogs = {};
+
+  function logApiFailure(error, operation) {
+    if (!window.console) return;
+    var path = error && error.queuePath ? error.queuePath : "(unknown path)";
+    var status = error && Number.isFinite(Number(error.queueStatus))
+      ? Number(error.queueStatus)
+      : 0;
+    var message = error && error.message ? error.message : "Unknown request error";
+    var key = operation + "|" + path + "|" + status + "|" + message;
+    var now = Date.now();
+    if (recentFailureLogs[key] && now - recentFailureLogs[key] < 60000) return;
+    recentFailureLogs[key] = now;
+    var logger = status === 0 || status >= 500 ? console.error : console.warn;
+    if (typeof logger === "function") {
+      logger.call(console, "[Queue Challenge] " + operation + " failed", {
+        path: path,
+        status: status,
+        message: message
+      });
+    }
+  }
+
   function api(path, method, body) {
     var options = {
       method: method || "GET",
@@ -27,7 +50,10 @@ CTFd._internal.challenge.submit = function (preview) {
     if (body !== undefined) options.body = JSON.stringify(body);
     return CTFd.fetch(path, options).then(function (response) {
       if (!response || typeof response.json !== "function") {
-        throw new Error("The queue request failed.");
+        var invalidResponse = new Error("The queue request failed.");
+        invalidResponse.queuePath = path;
+        invalidResponse.queueStatus = 0;
+        throw invalidResponse;
       }
       return response.json().catch(function () {
         return null;
@@ -49,10 +75,17 @@ CTFd._internal.challenge.submit = function (preview) {
           if (!message) {
             message = response.status ? "HTTP " + response.status : "The queue request failed.";
           }
-          throw new Error(message);
+          var apiError = new Error(message);
+          apiError.queuePath = path;
+          apiError.queueStatus = Number(response.status) || 0;
+          throw apiError;
         }
         return payload.data;
       });
+    }).catch(function (error) {
+      if (!error.queuePath) error.queuePath = path;
+      if (!Number.isFinite(Number(error.queueStatus))) error.queueStatus = 0;
+      throw error;
     });
   }
 
@@ -149,6 +182,7 @@ CTFd._internal.challenge.submit = function (preview) {
     return api("/api/v1/plugins/ctfd-queue/challenges/" + challengeId + "/status")
       .then(render)
       .catch(function (error) {
+        logApiFailure(error, "status refresh");
         var message = document.getElementById("queue-status-message");
         var action = document.getElementById("queue-action-button");
         if (message) {
@@ -200,6 +234,7 @@ CTFd._internal.challenge.submit = function (preview) {
       api(endpoint, "POST", {})
         .then(render)
         .catch(function (error) {
+          logApiFailure(error, shouldLeave ? "leave queue" : "join queue");
           var message = document.getElementById("queue-status-message");
           if (message) {
             message.className = "alert alert-warning mb-2";
