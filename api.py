@@ -4,7 +4,7 @@ import logging
 from flask import request
 from flask_restx import Namespace, Resource, abort
 
-from CTFd.models import Challenges, Solves
+from CTFd.models import Challenges, Solves, Users
 from CTFd.utils.decorators import admins_only, authed_only, during_ctf_time_only
 from CTFd.utils.modules import can_access_challenge
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
@@ -238,15 +238,30 @@ class AdminQueueAdd(Resource):
     def post(self, challenge_id):
         challenge = _admin_challenge(challenge_id)
         data = request.get_json(silent=True) or {}
-        try:
-            user_id = int(data.get("user_id"))
-        except (TypeError, ValueError) as exc:
-            log.warning(
-                "Invalid admin queue add request challenge_id=%s admin_user_id=%s",
-                challenge_id,
-                _current_user_id(),
-            )
-            abort(400, "A valid user_id is required.")
+        username = str(data.get("username") or "").strip()
+        if username:
+            user = Users.query.filter_by(name=username).first()
+            if user is None:
+                log.info(
+                    "Admin queue add requested unknown username challenge_id=%s username=%s admin_user_id=%s",
+                    challenge_id,
+                    username,
+                    _current_user_id(),
+                )
+                abort(400, "No CTFd user found with that username.")
+            user_id = user.id
+        else:
+            try:
+                user_id = int(data.get("user_id"))
+                if user_id < 1:
+                    raise ValueError("user_id must be positive")
+            except (TypeError, ValueError):
+                log.warning(
+                    "Invalid admin queue add request challenge_id=%s admin_user_id=%s",
+                    challenge_id,
+                    _current_user_id(),
+                )
+                abort(400, "A valid username or user_id is required.")
         return _run_queue_operation(
             lambda: QueueService.admin_add(challenge.id, user_id),
             operation="admin_add",
