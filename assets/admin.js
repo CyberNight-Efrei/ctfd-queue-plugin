@@ -222,10 +222,11 @@
       if (data && data.challenge && data.waiting) renderState(data);
       else if (data && data.state) renderState(data.state);
       showFeedback(successMessage, false);
-      return refresh();
+      return refresh().then(function () { return true; });
     }).catch(function (error) {
       logApiFailure(error, "admin queue action");
       showFeedback(error.message, true);
+      return false;
     });
   }
 
@@ -290,7 +291,9 @@
       }
       runAction(base + "/admin/challenges/" + challengeId + "/entries", "POST", {
         username: username
-      }, "Participant added to the queue.").then(function () { input.value = ""; });
+      }, "Participant added to the queue.").then(function (succeeded) {
+        if (succeeded) input.value = "";
+      });
     });
   }
 
