@@ -26,11 +26,33 @@ CTFd._internal.challenge.submit = function (preview) {
     };
     if (body !== undefined) options.body = JSON.stringify(body);
     return CTFd.fetch(path, options).then(function (response) {
-      if (!response || response.success !== true) {
-        var message = response && (response.message || response.description);
-        throw new Error(message || "The queue request failed.");
+      if (!response || typeof response.json !== "function") {
+        throw new Error("The queue request failed.");
       }
-      return response.data;
+      return response.json().catch(function () {
+        return null;
+      }).then(function (payload) {
+        if (!response.ok || !payload || payload.success !== true) {
+          var message = payload && (payload.message || payload.description || payload.error);
+          if (!message && payload && payload.errors) {
+            if (typeof payload.errors === "string") {
+              message = payload.errors;
+            } else if (Array.isArray(payload.errors)) {
+              message = payload.errors.join("; ");
+            } else if (typeof payload.errors === "object") {
+              message = Object.keys(payload.errors).map(function (key) {
+                var value = payload.errors[key];
+                return key + ": " + (Array.isArray(value) ? value.join(", ") : String(value));
+              }).join("; ");
+            }
+          }
+          if (!message) {
+            message = response.status ? "HTTP " + response.status : "The queue request failed.";
+          }
+          throw new Error(message);
+        }
+        return payload.data;
+      });
     });
   }
 
