@@ -233,7 +233,7 @@ def load(app):
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
     )
-    register_plugin_script("plugins/queue_challenge/assets/notifications.js")
+    register_plugin_script("/plugins/queue_challenge/assets/notifications.js")
     register_admin_plugin_menu_bar(
         title="Queues", route="/plugins/ctfd-queue/admin"
     )
