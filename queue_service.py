@@ -359,13 +359,16 @@ class QueueService:
             db.session.flush()
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
-            db.session.commit()
-            log.info(
-                "Participant joined queue challenge_id=%s user_id=%s team_id=%s position=%s",
+            log_context = (
                 challenge.id,
                 user.id,
                 team.id if team is not None else None,
                 row.position,
+            )
+            db.session.commit()
+            log.info(
+                "Participant joined queue challenge_id=%s user_id=%s team_id=%s position=%s",
+                *log_context,
             )
         except IntegrityError as exc:
             db.session.rollback()
@@ -407,12 +410,15 @@ class QueueService:
             row.left_at = _utcnow()
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
-            db.session.commit()
-            log.info(
-                "Participant left queue challenge_id=%s user_id=%s team_id=%s",
+            log_context = (
                 challenge.id,
                 user.id,
                 team.id if team is not None else None,
+            )
+            db.session.commit()
+            log.info(
+                "Participant left queue challenge_id=%s user_id=%s team_id=%s",
+                *log_context,
             )
         except Exception:
             db.session.rollback()
@@ -465,17 +471,20 @@ class QueueService:
                     )
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
-            db.session.commit()
             selected = len(picked)
+            log_context = (
+                challenge.id,
+                "automatic" if automatic else "manual",
+                challenge.round_number,
+                selected,
+                max(0, len(waiters) - selected),
+            )
+            db.session.commit()
             if selected:
                 log.info(
                     "Queue draw completed challenge_id=%s source=%s round_number=%s "
                     "selected_count=%s remaining_waiting=%s",
-                    challenge.id,
-                    "automatic" if automatic else "manual",
-                    challenge.round_number,
-                    selected,
-                    max(0, len(waiters) - selected),
+                    *log_context,
                 )
         except Exception:
             db.session.rollback()
@@ -596,12 +605,16 @@ class QueueService:
             db.session.flush()
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
+            admin_user = get_current_user()
+            log_context = (
+                challenge.id,
+                user.id,
+                getattr(admin_user, "id", None),
+            )
             db.session.commit()
             log.info(
                 "Administrator added participant to queue challenge_id=%s user_id=%s admin_user_id=%s",
-                challenge.id,
-                user.id,
-                getattr(get_current_user(), "id", None),
+                *log_context,
             )
         except IntegrityError as exc:
             db.session.rollback()
@@ -637,13 +650,17 @@ class QueueService:
             QueueService._resequence(row.challenge_id)
             QueueService._notify_next(row.challenge_id, events)
             challenge_id = row.challenge_id
-            db.session.commit()
-            log.info(
-                "Administrator reordered queue entry challenge_id=%s entry_id=%s direction=%s admin_user_id=%s",
+            admin_user = get_current_user()
+            log_context = (
                 challenge_id,
                 entry_id,
                 direction,
-                getattr(get_current_user(), "id", None),
+                getattr(admin_user, "id", None),
+            )
+            db.session.commit()
+            log.info(
+                "Administrator reordered queue entry challenge_id=%s entry_id=%s direction=%s admin_user_id=%s",
+                *log_context,
             )
         except Exception:
             db.session.rollback()
@@ -663,12 +680,16 @@ class QueueService:
             row.left_at = _utcnow()
             QueueService._resequence(challenge_id)
             QueueService._notify_next(challenge_id, events)
+            admin_user = get_current_user()
+            log_context = (
+                challenge_id,
+                entry_id,
+                getattr(admin_user, "id", None),
+            )
             db.session.commit()
             log.info(
                 "Administrator removed queue entry challenge_id=%s entry_id=%s admin_user_id=%s",
-                challenge_id,
-                entry_id,
-                getattr(get_current_user(), "id", None),
+                *log_context,
             )
         except Exception:
             db.session.rollback()
@@ -696,13 +717,14 @@ class QueueService:
                 return
             entry.state = "completed"
             entry.completed_at = _utcnow()
+            completed_round = entry.round_number
             db.session.commit()
             log.info(
                 "Selected participant completed queue challenge_id=%s user_id=%s team_id=%s round_number=%s",
                 challenge_id,
                 user_id,
                 team_id,
-                entry.round_number,
+                completed_round,
             )
         except Exception:
             db.session.rollback()
