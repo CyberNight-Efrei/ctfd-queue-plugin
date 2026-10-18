@@ -94,14 +94,11 @@ class QueueService:
     @staticmethod
     def _notification_for(entry, title, content):
         """Create a native CTFd notification and return its live-event payload."""
-        if _is_team_mode() and entry.team_id:
-            notification = Notifications(
-                title=title, content=content, team_id=entry.team_id
-            )
-        else:
-            notification = Notifications(
-                title=title, content=content, user_id=entry.user_id
-            )
+        # Notify the specific registered participant, not every teammate. In
+        # team mode the queue slot is team-scoped but the selected player is not.
+        notification = Notifications(
+            title=title, content=content, user_id=entry.user_id
+        )
         db.session.add(notification)
         db.session.flush()
 
@@ -180,7 +177,12 @@ class QueueService:
         batch_size = max(1, int(challenge.batch_size or 1))
         last_draw = challenge.last_draw_at or now
         elapsed = max(0, int((now - last_draw).total_seconds()))
-        until_next = max(0, interval - elapsed)
+        if challenge.queue_mode == "automatic":
+            until_next = max(0, interval - elapsed)
+        else:
+            # Manual draws depend on an administrator, so treat one configured
+            # interval as the estimated time to the next opportunity.
+            until_next = interval
         rounds_ahead = int(math.ceil(float(position) / batch_size))
         return until_next + max(0, rounds_ahead - 1) * interval
 
@@ -190,7 +192,21 @@ class QueueService:
         if user is None:
             raise QueueError("Authentication required.")
         challenge = QueueService.get_challenge(challenge_id)
-        account_key = QueueService.account_key(user, team)
+        try:
+            account_key = QueueService.account_key(user, team)
+        except QueueError:
+            return {
+                "state": "needs_team",
+                "can_join": False,
+                "can_leave": False,
+                "can_submit": False,
+                "queue_mode": challenge.queue_mode,
+                "batch_size": challenge.batch_size,
+                "interval_seconds": challenge.interval_seconds,
+                "show_position": bool(challenge.show_position),
+                "show_eta": bool(challenge.show_eta),
+                "selected_message": challenge.selected_message or "",
+            }
         row = QueueEntry.query.filter_by(
             challenge_id=challenge.id, account_key=account_key
         ).first()
