@@ -112,3 +112,63 @@
   .queue-settings-strip { align-items: flex-start; flex-direction: column; }
   .queue-panel-header { align-items: flex-start; }
 }
+
+
+/* Queue challenge listing filters and batch actions */
+.queue-filter-panel {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 16px;
+  border: 1px solid rgba(127, 140, 141, .23);
+  border-radius: 12px;
+  background: var(--bs-card-bg, #fff);
+}
+.queue-filter-field { min-width: 170px; }
+.queue-filter-name { flex: 1 1 260px; }
+.queue-filter-field label {
+  display: block;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+}
+.queue-filter-panel .form-control { min-height: 38px; }
+.queue-bulk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 10px;
+}
+.queue-select-visible {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.queue-checkbox-cell { width: 38px; text-align: center; }
+.queue-checkbox-cell input { width: 16px; height: 16px; accent-color: #2563eb; }
+.queue-list-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 255px;
+}
+.queue-visibility-badge { border: 1px solid transparent; }
+.queue-visibility-visible { color: #166534; background: #dcfce7; border-color: #86efac; }
+.queue-visibility-hidden { color: #475569; background: #f1f5f9; border-color: #cbd5e1; }
+.queue-visibility-other { color: #854d0e; background: #fef3c7; border-color: #fcd34d; }
+.queue-challenge-row[hidden],
+#queue-no-filter-results[hidden] { display: none !important; }
+@media (max-width: 760px) {
+  .queue-filter-panel { align-items: stretch; flex-direction: column; }
+  .queue-filter-field, .queue-filter-name { width: 100%; min-width: 0; }
+  .queue-bulk-toolbar { align-items: flex-start; flex-direction: column; }
+}
