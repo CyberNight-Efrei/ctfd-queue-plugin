@@ -2,6 +2,7 @@
 import logging
 import math
 from datetime import datetime, timedelta
+from html import escape as escape_html
 
 from sqlalchemy.exc import IntegrityError
 
@@ -98,8 +99,18 @@ class QueueService:
         """Create a native CTFd notification and return its live-event payload."""
         # Notify the specific registered participant, not every teammate. In
         # team mode the queue slot is team-scoped but the selected player is not.
+        challenge = getattr(entry, "challenge", None)
+        challenge_name = (
+            getattr(challenge, "name", None) or "Challenge {}".format(entry.challenge_id)
+        )
+        # Keep the persisted/plain-text content usable by CTFd's notification
+        # center and fallback alert, while formatting the live popup's html.
+        plain_content = "{}\n{}".format(challenge_name, content)
+        html_content = "<strong>{}</strong><br>{}".format(
+            escape_html(challenge_name), escape_html(content)
+        )
         notification = Notifications(
-            title=title, content=content, user_id=entry.user_id
+            title=title, content=plain_content, user_id=entry.user_id
         )
         db.session.add(notification)
         db.session.flush()
@@ -125,9 +136,9 @@ class QueueService:
             {
                 "id": notification.id,
                 "title": title,
-                "content": content,
-                # CTFd's native toast renderer reads html rather than content.
-                "html": content,
+                "content": plain_content,
+                # CTFd's live popup renderer reads html rather than content.
+                "html": html_content,
                 "date": (
                     notification.date.isoformat()
                     if notification.date
