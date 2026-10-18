@@ -146,7 +146,7 @@ class QueueChallenge(CTFdStandardChallenge):
             ).first()
             if entry is None:
                 abort(403, description="You must be selected from the queue before attempting this challenge.")
-            if get_config_user_mode() == "teams":
+            if entry.account_key.startswith("team:"):
                 team = get_current_team()
                 if team is None or entry.team_id != team.id:
                     abort(403, description="The selected queue entry does not match your current team.")
@@ -303,7 +303,7 @@ def load(app):
         ).first()
         if entry is None:
             abort(403, description="You must be selected from the queue before attempting this challenge.")
-        if get_config_user_mode() == "teams":
+        if entry.account_key.startswith("team:"):
             team = get_current_team()
             if team is None or entry.team_id != team.id:
                 abort(403, description="The selected queue entry does not match your current team.")
