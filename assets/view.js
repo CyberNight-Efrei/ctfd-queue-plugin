@@ -143,7 +143,18 @@ CTFd._internal.challenge.submit = function (preview) {
   function bind() {
     var action = document.getElementById("queue-action-button");
     var idElement = document.getElementById("queue-challenge-id");
+    var panel = document.getElementById("queue-plugin-panel");
     if (!action || !idElement || action.dataset.queueBound === "1") return;
+    if (panel && panel.dataset.preview === "true") {
+      action.disabled = true;
+      action.textContent = "Queue disabled in preview";
+      var previewMessage = document.getElementById("queue-status-message");
+      if (previewMessage) {
+        previewMessage.className = "alert alert-info mb-2";
+        setText(previewMessage, "Queue participation is disabled in CTFd's administrator preview.");
+      }
+      return;
+    }
     action.dataset.queueBound = "1";
     action.addEventListener("click", function () {
       if (busy || !currentStatus) return;
