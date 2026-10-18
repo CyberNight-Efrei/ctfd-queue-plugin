@@ -4,6 +4,29 @@
   var challengeId = parseInt(root.dataset.challengeId, 10);
   var base = "/api/v1/plugins/ctfd-queue";
 
+  var recentFailureLogs = {};
+
+  function logApiFailure(error, operation) {
+    if (!window.console) return;
+    var path = error && error.queuePath ? error.queuePath : "(unknown path)";
+    var status = error && Number.isFinite(Number(error.queueStatus))
+      ? Number(error.queueStatus)
+      : 0;
+    var message = error && error.message ? error.message : "Unknown request error";
+    var key = operation + "|" + path + "|" + status + "|" + message;
+    var now = Date.now();
+    if (recentFailureLogs[key] && now - recentFailureLogs[key] < 60000) return;
+    recentFailureLogs[key] = now;
+    var logger = status === 0 || status >= 500 ? console.error : console.warn;
+    if (typeof logger === "function") {
+      logger.call(console, "[Queue Challenge] " + operation + " failed", {
+        path: path,
+        status: status,
+        message: message
+      });
+    }
+  }
+
   function api(path, method, body) {
     var options = {
       method: method || "GET",
@@ -13,7 +36,10 @@
     if (body !== undefined) options.body = JSON.stringify(body);
     return CTFd.fetch(path, options).then(function (response) {
       if (!response || typeof response.json !== "function") {
-        throw new Error("Request failed.");
+        var invalidResponse = new Error("Request failed.");
+        invalidResponse.queuePath = path;
+        invalidResponse.queueStatus = 0;
+        throw invalidResponse;
       }
       return response.json().catch(function () {
         return null;
@@ -35,10 +61,17 @@
           if (!message) {
             message = response.status ? "HTTP " + response.status : "Request failed.";
           }
-          throw new Error(message);
+          var apiError = new Error(message);
+          apiError.queuePath = path;
+          apiError.queueStatus = Number(response.status) || 0;
+          throw apiError;
         }
         return payload.data;
       });
+    }).catch(function (error) {
+      if (!error.queuePath) error.queuePath = path;
+      if (!Number.isFinite(Number(error.queueStatus))) error.queueStatus = 0;
+      throw error;
     });
   }
 
@@ -118,7 +151,10 @@
   function refresh() {
     return api(base + "/admin/challenges/" + challengeId + "/state")
       .then(renderState)
-      .catch(function (error) { showFeedback(error.message, true); });
+      .catch(function (error) {
+        logApiFailure(error, "admin state refresh");
+        showFeedback(error.message, true);
+      });
   }
 
   function runAction(path, method, body, successMessage) {
@@ -128,6 +164,7 @@
       showFeedback(successMessage, false);
       return refresh();
     }).catch(function (error) {
+      logApiFailure(error, "admin queue action");
       showFeedback(error.message, true);
     });
   }
