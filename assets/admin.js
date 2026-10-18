@@ -92,39 +92,60 @@
     var h = Math.floor(seconds / 3600);
     var m = Math.floor((seconds % 3600) / 60);
     var s = seconds % 60;
-    var mm = String(m).padStart(2, "0");
-    var ss = String(s).padStart(2, "0");
-    if (h) return h + "h" + mm + "m" + ss + "s";
-    if (m) return m + "m" + ss + "s";
-    return s + "s";
+    return [h, m, s].map(function (part) {
+      return String(part).padStart(2, "0");
+    }).join(":");
   }
 
   var liveCounters = {
     elapsedSeconds: 0,
     nextDrawSeconds: 0,
+    syncedAt: Date.now(),
     hasDrawn: false,
     automatic: false
   };
   var refreshInProgress = false;
   var autoRefreshTimer = null;
+  var autoRefreshStorageKey = "queue-challenge-admin-auto-refresh:" + challengeId;
+
+  function currentCounterValues() {
+    var elapsedSinceSync = Math.max(0, Math.floor((Date.now() - liveCounters.syncedAt) / 1000));
+    return {
+      elapsedSeconds: liveCounters.elapsedSeconds + elapsedSinceSync,
+      nextDrawSeconds: Math.max(0, liveCounters.nextDrawSeconds - elapsedSinceSync)
+    };
+  }
 
   function renderCounters() {
     var elapsed = document.getElementById("queue-elapsed");
     var nextDraw = document.getElementById("queue-next-draw");
+    var current = currentCounterValues();
     if (elapsed) elapsed.textContent = liveCounters.hasDrawn
-      ? duration(liveCounters.elapsedSeconds)
+      ? duration(current.elapsedSeconds)
       : "No draw yet";
     if (nextDraw) nextDraw.textContent = liveCounters.automatic
-      ? duration(liveCounters.nextDrawSeconds)
+      ? duration(current.nextDrawSeconds)
       : "Manual";
   }
 
   function tickCounters() {
-    if (liveCounters.hasDrawn) liveCounters.elapsedSeconds += 1;
-    if (liveCounters.automatic && liveCounters.nextDrawSeconds > 0) {
-      liveCounters.nextDrawSeconds -= 1;
-    }
     renderCounters();
+  }
+
+  function readAutoRefreshPreference() {
+    try {
+      return window.localStorage.getItem(autoRefreshStorageKey) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function saveAutoRefreshPreference(enabled) {
+    try {
+      window.localStorage.setItem(autoRefreshStorageKey, enabled ? "true" : "false");
+    } catch (_) {
+      // The preference still applies for the current page if browser storage is disabled.
+    }
   }
 
   function setAutoRefresh(enabled) {
@@ -182,6 +203,7 @@
     liveCounters.elapsedSeconds = Math.max(0, Number(challenge.elapsed_seconds) || 0);
     liveCounters.automatic = challenge.queue_mode === "automatic";
     liveCounters.nextDrawSeconds = Math.max(0, Number(challenge.next_draw_in_seconds) || 0);
+    liveCounters.syncedAt = Date.now();
     renderCounters();
 
     var mode = document.getElementById("queue-mode");
@@ -239,7 +261,10 @@
 
   var autoRefreshCheckbox = document.getElementById("queue-auto-refresh");
   if (autoRefreshCheckbox) {
+    autoRefreshCheckbox.checked = readAutoRefreshPreference();
+    setAutoRefresh(autoRefreshCheckbox.checked);
     autoRefreshCheckbox.addEventListener("change", function () {
+      saveAutoRefreshPreference(autoRefreshCheckbox.checked);
       setAutoRefresh(autoRefreshCheckbox.checked);
       showFeedback(
         autoRefreshCheckbox.checked
