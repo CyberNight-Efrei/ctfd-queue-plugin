@@ -13,9 +13,6 @@ from .models import QueueChallengeModel, QueueEntry
 
 log = logging.getLogger("ctfd.queue_challenge")
 
-ACTIVE_STATES = ("waiting", "selected")
-
-
 class QueueError(Exception):
     """An expected queue operation error suitable for returning to a client."""
 
@@ -26,12 +23,6 @@ def _is_team_mode():
 
 def _utcnow():
     return datetime.utcnow()
-
-
-def _parse_timestamp(value):
-    if not value:
-        return None
-    return value
 
 
 def _publish_notifications(payloads):
@@ -53,11 +44,13 @@ def _publish_notifications(payloads):
 class QueueService:
     @staticmethod
     def account_key(user, team=None):
-        if _is_team_mode():
-            team = team or getattr(user, "team", None)
-            if team is None:
-                raise QueueError("You must join a team before entering this queue.")
+        team = team or getattr(user, "team", None)
+        # If a team relationship exists, keep the one-entry-per-team invariant
+        # even on installations configured for individual scoring.
+        if team is not None:
             return "team:{}".format(team.id)
+        if _is_team_mode():
+            raise QueueError("You must join a team before entering this queue.")
         return "user:{}".format(user.id)
 
     @staticmethod
@@ -142,7 +135,6 @@ class QueueService:
         if head is None or head.next_notified_at is not None:
             return
         head.next_notified_at = _utcnow()
-        username = getattr(head.user, "name", None) or "A participant"
         events.append(
             QueueService._notification_for(
                 head,
@@ -225,7 +217,7 @@ class QueueService:
                 "selected_message": challenge.selected_message or "",
             }
 
-        if _is_team_mode() and row.user_id != user.id:
+        if row.account_key.startswith("team:") and row.user_id != user.id:
             return {
                 "state": "registered_by_teammate",
                 "can_join": False,
@@ -373,6 +365,8 @@ class QueueService:
             ).first()
             if row is None or row.state == "left":
                 raise QueueError("You are not in this queue.")
+            if row.account_key.startswith("team:") and row.user_id != user.id:
+                raise QueueError("Another teammate registered this team; only that player can leave the queue.")
             if row.state == "selected":
                 raise QueueError("You have already been selected and cannot leave the queue.")
             if row.state == "completed":
