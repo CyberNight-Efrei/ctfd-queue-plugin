@@ -1,5 +1,6 @@
 """REST API endpoints for queue participants and administrators."""
-from flask_restx import Namespace, Resource, abort, request
+from flask import request
+from flask_restx import Namespace, Resource, abort
 
 from CTFd.utils.decorators import admins_only, authed_only, during_ctf_time_only
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
