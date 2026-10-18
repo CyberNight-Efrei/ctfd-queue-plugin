@@ -173,11 +173,16 @@ class QueueChallenge(CTFdStandardChallenge):
 
     @classmethod
     def solve(cls, user, team, challenge, request):
+        # Do not remove the selected participant immediately on solve. The
+        # current selection remains visible for this round and is evicted by
+        # QueueService._advance at the next queue iteration.
         result = super().solve(user, team, challenge, request)
-        QueueService.mark_completed(
-            challenge_id=challenge.id,
-            user_id=user.id,
-            team_id=team.id if team else None,
+        log.info(
+            "CTFd recorded a solve for queue challenge_id=%s user_id=%s team_id=%s; "
+            "queue state will advance on the next iteration",
+            challenge.id,
+            user.id,
+            team.id if team else None,
         )
         return result
 
@@ -197,11 +202,6 @@ class QueueChallenge(CTFdStandardChallenge):
             log.exception("Failed to delete queue challenge challenge_id=%s", challenge_id)
             raise
 
-
-def get_config_user_mode():
-    from CTFd.utils import get_config
-
-    return get_config("user_mode", "users")
 
 
 def _automatic_worker(app):
