@@ -1,13 +1,71 @@
 {% extends "challenge.html" %}
 
-{% block input %}
-<div id="queue-plugin-panel" class="mb-3" aria-live="polite" data-preview="{{ 'true' if request.path.startswith('/admin/challenges/preview/') else 'false' }}">
-  <div id="queue-status-message" class="alert alert-secondary mb-2">Loading queue status…</div>
-  <div id="queue-details" class="small text-muted mb-2"></div>
+{# Follow CTFd-Whale's pattern: keep challenge-specific status inside a full-width card in the description. #}
+{% block description %}
+{{ challenge.html }}
+<div class="row text-center pb-3 queue-view-layout">
+  <div class="col-12">
+    <div id="queue-plugin-panel" class="card w-100 mb-3" aria-live="polite"
+         data-preview="{{ 'true' if request.path.startswith('/admin/challenges/preview/') else 'false' }}">
+      <div class="card-body">
+        <h5 class="card-title">Queue status</h5>
+        <div id="queue-status-message" class="alert alert-secondary mb-2">Loading queue status…</div>
+        <div id="queue-details" class="small text-muted mb-2"></div>
+        <p class="small text-muted mb-0">
+          Queue membership does not restrict flag submissions. You may submit the flag at any time.
+        </p>
+      </div>
+    </div>
+  </div>
 </div>
-<div id="queue-flag-input" style="display:none;">
+
+<style>
+  .queue-view-layout {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .queue-view-layout > .col-12 {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #queue-plugin-panel {
+    width: 100%;
+    text-align: left;
+  }
+  #queue-details {
+    text-align: center;
+  }
+  .submit-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .75rem;
+  }
+  .submit-row > div {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .submit-row > .key-submit {
+    margin-top: 0 !important;
+  }
+  #queue-action-button,
+  #challenge-submit {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+  }
+</style>
+{% endblock %}
+
+{% block input %}
+<div id="queue-flag-input" class="w-100">
   <input id="challenge-id" class="challenge-id" type="hidden" value="{{ challenge.id }}">
-  <input id="challenge-input" class="challenge-input form-control" type="text" name="submission"
+  <input id="challenge-input" class="challenge-input form-control w-100" type="text" name="submission"
          placeholder="Flag" autocomplete="off" x-model="submission" @keyup.enter="submitChallenge()">
 </div>
 <input id="queue-challenge-id" type="hidden" value="{{ challenge.id }}">
@@ -16,5 +74,5 @@
 {% block submit %}
 <button id="queue-action-button" class="btn btn-primary w-100" type="button" disabled>Loading…</button>
 <button id="challenge-submit" class="challenge-submit btn btn-outline-secondary w-100 mt-2"
-        type="submit" @click.debounce.500ms="submitChallenge()" style="display:none;">Submit</button>
+        type="submit" @click.debounce.500ms="submitChallenge()">Submit</button>
 {% endblock %}
