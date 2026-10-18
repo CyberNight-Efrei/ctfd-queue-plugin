@@ -74,7 +74,7 @@
         <tbody id="queue-waiting-rows">
         {% for entry in state.waiting %}
           <tr>
-            <td><span class="queue-position">{{ entry.position }}</span></td>
+            <td><span class="queue-position">{{ entry.position }}</span>{% if loop.first %} <span class="queue-badge queue-badge-auto ml-2">Next</span>{% endif %}</td>
             <td>{{ entry.username }} <span class="text-muted small">#{{ entry.user_id }}</span></td>
             <td>{{ entry.team_name or '—' }}</td>
             <td>{{ entry.joined_at or '—' }}</td>
