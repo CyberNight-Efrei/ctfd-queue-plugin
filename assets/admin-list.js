@@ -118,10 +118,14 @@
   }
 
   function applyFilters() {
-    var nameFilter = (document.getElementById("queue-filter-name").value || "")
-      .trim().toLocaleLowerCase();
-    var visibilityFilter = document.getElementById("queue-filter-visibility").value;
-    var modeFilter = document.getElementById("queue-filter-mode").value;
+    var nameInput = document.getElementById("queue-filter-name");
+    var visibilityInput = document.getElementById("queue-filter-visibility");
+    var modeInput = document.getElementById("queue-filter-mode");
+    if (!nameInput || !visibilityInput || !modeInput) return;
+
+    var nameFilter = (nameInput.value || "").trim().toLocaleLowerCase();
+    var visibilityFilter = visibilityInput.value;
+    var modeFilter = modeInput.value;
     var shown = 0;
 
     allRows.forEach(function (row) {
