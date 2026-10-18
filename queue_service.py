@@ -280,8 +280,7 @@ class QueueService:
                 "selected_message": challenge.selected_message or "",
             }
 
-        # Eviction is terminal for this queue entry, including for teammates,
-        # but never prevents flag submission through CTFd's native challenge API.
+        # Automatic eviction is terminal for this queue entry, including for teammates.
         if row.state == "evicted":
             return {
                 "state": "evicted",
