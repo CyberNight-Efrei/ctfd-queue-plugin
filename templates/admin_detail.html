@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid queue-admin-page" id="queue-admin-detail" data-challenge-id="{{ challenge.id }}">
+  <div class="queue-page-header">
+    <div>
+      <a href="{{ url_for('queue_challenge.admin_index') }}" class="queue-back-link">← All queues</a>
+      <p class="queue-eyebrow">Challenge ID {{ challenge.id }}</p>
+      <h1>{{ challenge.name }}</h1>
+      <p class="text-muted mb-0">Manage who is waiting, advance a round, and revoke selection when needed.</p>
+    </div>
+    <div class="queue-header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.challenges_detail', challenge_id=challenge.id) }}">Edit challenge</a>
+      <button class="btn btn-primary" type="button" id="queue-advance">
+        <span aria-hidden="true">▶</span> Advance queue
+      </button>
+    </div>
+  </div>
+
+  <div id="queue-admin-feedback" class="alert" role="status" style="display:none;"></div>
+
+  <div class="queue-stat-grid">
+    <div class="queue-stat-card"><span class="queue-stat-label">Waiting</span><strong id="queue-waiting-count">{{ state.waiting|length }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Currently selected</span><strong id="queue-selected-count">{{ state.selected|length }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Round</span><strong id="queue-round-number">{{ state.challenge.round_number }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Time since last draw</span><strong id="queue-elapsed">{{ state.challenge.elapsed_seconds }}s</strong></div>
+  </div>
+
+  <div class="queue-settings-strip">
+    <span><strong>Mode</strong> <span id="queue-mode">{{ 'Automatic' if challenge.queue_mode == 'automatic' else 'Manual' }}</span></span>
+    <span><strong>Batch size</strong> <span id="queue-batch-size">{{ challenge.batch_size }}</span></span>
+    <span><strong>Configured interval</strong> <span id="queue-interval">{{ challenge.interval_seconds }} seconds</span></span>
+    <span><strong>Next automatic draw</strong> <span id="queue-next-draw">{{ state.challenge.next_draw_in_seconds }}s</span></span>
+  </div>
+  <p class="queue-admin-hint">The interval is an estimate only in manual mode. Advancing a queue selects the first configured batch of waiting participants. Selected participants can submit flags until they solve the challenge or an administrator revokes their selection.</p>
+
+  <div class="queue-panel">
+    <div class="queue-panel-header">
+      <div><h2>Selected participants</h2><p>Participants with permission to attempt this challenge.</p></div>
+      <span class="queue-badge queue-badge-selected">Selected</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table queue-table">
+        <thead><tr><th>Participant</th><th>Team</th><th>Round</th><th>Selected at</th><th></th></tr></thead>
+        <tbody id="queue-selected-rows">
+        {% for entry in state.selected %}
+          <tr>
+            <td>{{ entry.username }} <span class="text-muted small">#{{ entry.user_id }}</span></td>
+            <td>{{ entry.team_name or '—' }}</td>
+            <td>{{ entry.round_number or '—' }}</td>
+            <td>{{ entry.selected_at or '—' }}</td>
+            <td class="text-right"><button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="{{ entry.id }}">Revoke selection</button></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="queue-empty-row">No participants are currently selected.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="queue-panel">
+    <div class="queue-panel-header">
+      <div><h2>Waiting queue</h2><p>Use the arrows to change the order. The top participant is next in line.</p></div>
+      <span class="queue-badge queue-badge-manual">FIFO queue</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table queue-table">
+        <thead><tr><th>Position</th><th>Participant</th><th>Team</th><th>Joined at</th><th>Reorder / remove</th></tr></thead>
+        <tbody id="queue-waiting-rows">
+        {% for entry in state.waiting %}
+          <tr>
+            <td><span class="queue-position">{{ entry.position }}</span></td>
+            <td>{{ entry.username }} <span class="text-muted small">#{{ entry.user_id }}</span></td>
+            <td>{{ entry.team_name or '—' }}</td>
+            <td>{{ entry.joined_at or '—' }}</td>
+            <td class="queue-row-actions">
+              <button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="{{ entry.id }}" aria-label="Move up">↑</button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="move-down" data-entry-id="{{ entry.id }}" aria-label="Move down">↓</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="{{ entry.id }}">Remove</button>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="queue-empty-row">The waiting queue is empty.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="queue-panel">
+    <div class="queue-panel-header">
+      <div><h2>Add a participant</h2><p>Enter a CTFd user ID. In team mode, only one signup per team is permitted.</p></div>
+    </div>
+    <form id="queue-add-user-form" class="queue-add-form">
+      <div class="form-group">
+        <label for="queue-add-user-id">CTFd user ID</label>
+        <input class="form-control" id="queue-add-user-id" name="user_id" type="number" min="1" required placeholder="e.g. 42">
+      </div>
+      <button type="submit" class="btn btn-outline-primary">Add to queue</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}"></script>
+{% endblock %}
