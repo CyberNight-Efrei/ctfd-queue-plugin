@@ -52,7 +52,7 @@ Automatic progression checks due queues every few seconds; the configured interv
 
 ## Notifications
 
-Notifications are persisted in CTFd's native notifications table. Live alerts use a separate `queue_notification` event that the plugin filters by recipient user ID before calling CTFd's native toast UI; the standard global `notification` event is deliberately not used for private selection alerts. If server-sent events are disabled or temporarily unavailable, the queue status still reflects selection when the challenge view refreshes. The notification targets the actual registered player, including in team mode.
+Notifications are persisted in CTFd's native notifications table. Live alerts use a separate `queue_notification` event that the plugin filters by recipient user ID before calling CTFd's native toast UI; the challenge name is displayed in bold at the start of each popup. The standard global `notification` event is deliberately not used for private selection alerts. If server-sent events are disabled or temporarily unavailable, the queue status still reflects selection when the challenge view refreshes. The notification targets the actual registered player, including in team mode.
 
 ## Validation
 
