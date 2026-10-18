@@ -419,6 +419,8 @@ class QueueService:
             ).first()
             if row is None or row.state == "left":
                 raise QueueError("You are not in this queue.")
+            if row.state == "evicted":
+                raise QueueError("You have been removed from this queue and cannot rejoin.")
             if row.account_key.startswith("team:") and row.user_id != user.id:
                 raise QueueError("Another teammate registered this team; only that player can leave the queue.")
             if row.state == "selected":
@@ -747,6 +749,8 @@ class QueueService:
             row = QueueEntry.query.filter_by(id=entry_id).with_for_update().first()
             if row is None:
                 raise QueueError("Queue entry not found.")
+            if row.state == "evicted":
+                raise QueueError("This participant has already been evicted from the queue.")
             challenge_id = row.challenge_id
             row.state = "left"
             row.left_at = _utcnow()
