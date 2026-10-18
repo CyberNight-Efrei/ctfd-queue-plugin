@@ -8,7 +8,7 @@
 <div id="queue-flag-input" style="display:none;">
   <input id="challenge-id" class="challenge-id" type="hidden" value="{{ challenge.id }}">
   <input id="challenge-input" class="challenge-input form-control" type="text" name="submission"
-         placeholder="Flag" autocomplete="off">
+         placeholder="Flag" autocomplete="off" x-model="submission" @keyup.enter="submitChallenge()">
 </div>
 <input id="queue-challenge-id" type="hidden" value="{{ challenge.id }}">
 {% endblock %}
@@ -16,5 +16,5 @@
 {% block submit %}
 <button id="queue-action-button" class="btn btn-primary w-100" type="button" disabled>Loading…</button>
 <button id="challenge-submit" class="challenge-submit btn btn-outline-secondary w-100 mt-2"
-        type="submit" style="display:none;">Submit</button>
+        type="submit" @click.debounce.500ms="submitChallenge()" style="display:none;">Submit</button>
 {% endblock %}
