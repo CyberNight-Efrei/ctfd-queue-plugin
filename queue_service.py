@@ -34,7 +34,10 @@ def _publish_notifications(payloads):
         if manager is None:
             return
         for payload in payloads:
-            manager.publish(data=payload, type="notification")
+            # CTFd's built-in "notification" SSE event is broadcast to every
+            # connected client. Queue notifications are private to one user, so
+            # send a distinct event name and filter it client-side by user_id.
+            manager.publish(data=payload, type="queue_notification")
     except Exception:
         # Persistence is the source of truth; a live-event failure must not undo
         # a draw and should be visible in logs.
@@ -112,6 +115,8 @@ class QueueService:
                 "id": notification.id,
                 "title": title,
                 "content": content,
+                # CTFd's native toast renderer reads html rather than content.
+                "html": content,
                 "date": (
                     notification.date.isoformat()
                     if notification.date
