@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid queue-admin-page">
+  <div class="queue-page-header">
+    <div>
+      <p class="queue-eyebrow">CTFd plugin</p>
+      <h1>Challenge queues</h1>
+      <p class="text-muted mb-0">Manage manual draws, review waiting participants, and monitor automatic rounds.</p>
+    </div>
+  </div>
+
+  <div class="queue-stat-grid">
+    <div class="queue-stat-card"><span class="queue-stat-label">Queue challenges</span><strong>{{ queue_challenges|length }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Waiting participants</span><strong>{{ queue_challenges|sum(attribute='waiting_count') }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Selected participants</span><strong>{{ queue_challenges|sum(attribute='selected_count') }}</strong></div>
+  </div>
+
+  <div class="queue-section-heading">
+    <div>
+      <h2>Challenges</h2>
+      <p class="text-muted">Open a challenge to advance its queue and manage entries.</p>
+    </div>
+  </div>
+
+  {% if queue_challenges %}
+  <div class="table-responsive queue-table-wrap">
+    <table class="table queue-table">
+      <thead>
+        <tr><th>Challenge</th><th>Progression</th><th>Batch size</th><th>Waiting</th><th>Selected</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for item in queue_challenges %}
+        <tr>
+          <td>
+            <div class="queue-challenge-title">{{ item.challenge.name }}</div>
+            <div class="text-muted small">ID {{ item.challenge.id }} · {{ item.challenge.category }}</div>
+          </td>
+          <td><span class="queue-badge {{ 'queue-badge-auto' if item.challenge.queue_mode == 'automatic' else 'queue-badge-manual' }}">{{ 'Automatic' if item.challenge.queue_mode == 'automatic' else 'Manual' }}</span></td>
+          <td>{{ item.challenge.batch_size }} per draw</td>
+          <td><span class="queue-count">{{ item.waiting_count }}</span></td>
+          <td><span class="queue-count queue-count-selected">{{ item.selected_count }}</span></td>
+          <td class="text-right"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage queue <span aria-hidden="true">→</span></a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="queue-empty-state">
+    <h3>No queue challenges yet</h3>
+    <p>Create a challenge and select <strong>Queue Challenge</strong> as its type. The new type keeps CTFd's standard description, attribution, flags, and scoring settings.</p>
+    <a class="btn btn-primary" href="{{ url_for('admin.challenges_listing') }}">Open challenges</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
