@@ -108,6 +108,7 @@ class QueueChallenge(CTFdStandardChallenge):
         data = dict(request.form or request.get_json() or {})
         # Scheduler bookkeeping is server-owned and never accepted from an API client.
         data.pop("last_draw_at", None)
+        data.pop("last_selection_at", None)
         data.pop("round_number", None)
         data = cls._normalise_queue_fields(
             data, ChallengeUpdateException, partial=True
