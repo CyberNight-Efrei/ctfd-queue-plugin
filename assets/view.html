@@ -11,9 +11,9 @@
         <h5 class="card-title">Queue status</h5>
         <div id="queue-status-message" class="alert alert-secondary mb-2">Loading queue status…</div>
         <div id="queue-details" class="small text-muted mb-2"></div>
-        <p class="small text-muted mb-0">
-          Queue membership does not restrict flag submissions. You may submit the flag at any time.
-        </p>
+        <div class="queue-action-wrap">
+          <button id="queue-action-button" class="btn btn-primary w-100" type="button" disabled>Loading…</button>
+        </div>
       </div>
     </div>
   </div>
@@ -61,6 +61,9 @@
     width: 100%;
     min-height: 42px;
   }
+  .queue-action-wrap {
+    margin-top: .75rem;
+  }
 </style>
 {% endblock %}
 
@@ -74,7 +77,6 @@
 {% endblock %}
 
 {% block submit %}
-<button id="queue-action-button" class="btn btn-primary w-100" type="button" disabled>Loading…</button>
 <button id="challenge-submit" class="challenge-submit btn btn-outline-secondary w-100 mt-2"
         type="submit" @click.debounce.500ms="submitChallenge()">Submit</button>
 {% endblock %}
