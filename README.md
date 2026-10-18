@@ -1,6 +1,6 @@
 # CTFd Queue Challenge
 
-A CTFd plugin that adds a Queue Challenge type. Participants register in a queue for round-based selection, while flag submissions remain available at any time regardless of queue state.
+A CTFd plugin that adds a Queue Challenge type. Participants register in a queue and are selected in configured rounds.
 
 The challenge inherits CTFd's standard challenge model and scoring implementation. It supports the usual title, category, description, attribution, connection information, files, flags, logic, maximum attempts, and static/dynamic scoring options.
 
@@ -11,8 +11,7 @@ The challenge inherits CTFd's standard challenge model and scoring implementatio
 - In automatic mode, a background worker advances due queues and selects the configured number of waiting entries.
 - In manual mode, administrators advance a queue explicitly from the CTFd administration page.
 - The selected participant receives a CTFd notification when selected. The first waiting participant is notified when they become next in line. At the next iteration, any entries still selected from the previous round are permanently evicted from the queue, even when no one is waiting.
-- Flag submission is independent of queue state. CTFd's normal challenge, flag, attempt-limit, and team-solving rules remain in effect.
-- In team mode, a queue slot is reserved per team and the registering player receives the selection notification. Any eligible teammate may submit the flag using CTFd's normal team-solving rules.
+- In team mode, a queue slot is reserved per team and the registering player receives the selection notification. CTFd's configured team-solving rules remain in effect.
 - Queue operations and notification records are persisted in CTFd's database.
 
 ## Installation
@@ -40,7 +39,7 @@ CTFd's native scoring options are available directly during creation: static, li
 
 The Queues menu provides an overview of all queue challenges. The overview supports filtering by challenge name, visibility, and progression mode; each row can advance its queue or copy a configured flag directly to the clipboard without displaying it. Administrators can select multiple challenges and advance their queues in one batch operation. Each challenge detail page shows selected participants, the waiting queue, round number, time since the last draw, progression mode, interval, and batch size.
 
-Administrators can manually refresh the queue state, optionally enable automatic refresh every two minutes, and advance the queue, move waiting participants up or down, or remove a participant from the active queue. Participants can be added directly by their CTFd username (or by user ID through the API). The participant's estimated wait and the administrator's elapsed-since-draw and next-draw estimates update every second between status refreshes; the queue mode is shown as a colored badge. Removing a selection affects queue membership only; it does not block flag submissions or delete/rewrite CTFd solves. Automatic/manual next-round eviction is terminal for the queue entry, but not for flag submission.
+Administrators can manually refresh the queue state, optionally enable automatic refresh every two minutes, and advance the queue, move waiting participants up or down, or remove a participant from the active queue. Participants can be added directly by CTFd username or user ID. Username autocomplete is available in the administrator form. The participant's estimated wait and the administrator's elapsed-since-draw and next-draw estimates update every second between status refreshes; the queue mode is shown as a colored badge. Automatically evicted entries are terminal for the queue.
 
 ## Automatic progression and deployments
 
@@ -56,6 +55,6 @@ Notifications are persisted in CTFd's native notifications table. Live alerts us
 
 ## Validation
 
-The GitHub Actions workflow checks Python and JavaScript syntax. Before using this plugin in a live competition, test it inside a disposable CTFd deployment with the same CTFd version and database engine you use in production. Verify challenge creation/update, native scoring, users and teams mode, duplicate registration, manual and automatic draws, removal of previous selections on the next iteration, reorder/add/remove actions, and notification delivery. Confirm that flag attempts work from every queue state and that CTFd team-solving logic behaves as configured.
+The GitHub Actions workflow checks Python and JavaScript syntax. Before using this plugin in a live competition, test it inside a disposable CTFd deployment with the same CTFd version and database engine you use in production. Verify challenge creation/update, native scoring, users and teams mode, duplicate registration, manual and automatic draws, re-entry after administrator removal, rejection of re-entry after a solve, removal of previous selections on the next iteration, reorder/add/remove actions, and notification delivery. Confirm that CTFd team-solving logic behaves as configured.
 
 The implementation is aligned with CTFd's current challenge plugin APIs, but a live CTFd-plus-database integration run is still required before production use.
