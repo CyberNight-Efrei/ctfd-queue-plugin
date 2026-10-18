@@ -88,13 +88,51 @@
   }
 
   function duration(seconds) {
-    seconds = Math.max(0, Number(seconds) || 0);
+    seconds = Math.max(0, Math.floor(Number(seconds) || 0));
     var h = Math.floor(seconds / 3600);
     var m = Math.floor((seconds % 3600) / 60);
-    var s = Math.floor(seconds % 60);
-    if (h) return h + "h " + m + "m";
-    if (m) return m + "m " + s + "s";
+    var s = seconds % 60;
+    if (h) return h + "h" + m + "m" + s + "s";
+    if (m) return m + "m" + s + "s";
     return s + "s";
+  }
+
+  var liveCounters = {
+    elapsedSeconds: 0,
+    nextDrawSeconds: 0,
+    hasDrawn: false,
+    automatic: false
+  };
+  var refreshInProgress = false;
+  var autoRefreshTimer = null;
+
+  function renderCounters() {
+    var elapsed = document.getElementById("queue-elapsed");
+    var nextDraw = document.getElementById("queue-next-draw");
+    if (elapsed) elapsed.textContent = liveCounters.hasDrawn
+      ? duration(liveCounters.elapsedSeconds)
+      : "No draw yet";
+    if (nextDraw) nextDraw.textContent = liveCounters.automatic
+      ? duration(liveCounters.nextDrawSeconds)
+      : "Manual";
+  }
+
+  function tickCounters() {
+    if (liveCounters.hasDrawn) liveCounters.elapsedSeconds += 1;
+    if (liveCounters.automatic && liveCounters.nextDrawSeconds > 0) {
+      liveCounters.nextDrawSeconds -= 1;
+    }
+    renderCounters();
+  }
+
+  function setAutoRefresh(enabled) {
+    if (autoRefreshTimer !== null) {
+      window.clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+    if (enabled) {
+      autoRefreshTimer = window.setInterval(refresh, 120000);
+    }
   }
 
   function showFeedback(message, isError) {
@@ -138,22 +176,42 @@
     document.getElementById("queue-waiting-count").textContent = state.waiting.length;
     document.getElementById("queue-selected-count").textContent = state.selected.length;
     document.getElementById("queue-round-number").textContent = challenge.round_number;
-    document.getElementById("queue-elapsed").textContent = challenge.has_drawn ? duration(challenge.elapsed_seconds) : "No draw yet";
-    document.getElementById("queue-mode").textContent = challenge.queue_mode === "automatic" ? "Automatic" : "Manual";
+    liveCounters.hasDrawn = Boolean(challenge.has_drawn);
+    liveCounters.elapsedSeconds = Math.max(0, Number(challenge.elapsed_seconds) || 0);
+    liveCounters.automatic = challenge.queue_mode === "automatic";
+    liveCounters.nextDrawSeconds = Math.max(0, Number(challenge.next_draw_in_seconds) || 0);
+    renderCounters();
+
+    var mode = document.getElementById("queue-mode");
+    var automatic = challenge.queue_mode === "automatic";
+    mode.textContent = automatic ? "Automatic" : "Manual";
+    mode.className = "queue-badge queue-mode-badge " +
+      (automatic ? "queue-mode-automatic" : "queue-mode-manual");
     document.getElementById("queue-batch-size").textContent = challenge.batch_size;
     document.getElementById("queue-interval").textContent = challenge.interval_seconds + " seconds";
-    document.getElementById("queue-next-draw").textContent =
-      challenge.queue_mode === "automatic" ? duration(challenge.next_draw_in_seconds) : "Manual";
     renderEntries("queue-selected-rows", state.selected, true);
     renderEntries("queue-waiting-rows", state.waiting, false);
   }
 
   function refresh() {
+    if (refreshInProgress) return Promise.resolve();
+    refreshInProgress = true;
+    var refreshButton = document.getElementById("queue-refresh");
+    if (refreshButton) refreshButton.disabled = true;
+
     return api(base + "/admin/challenges/" + challengeId + "/state")
-      .then(renderState)
+      .then(function (state) {
+        renderState(state);
+        var refreshStatus = document.getElementById("queue-refresh-status");
+        if (refreshStatus) refreshStatus.textContent = "Last refreshed at " + new Date().toLocaleTimeString();
+      })
       .catch(function (error) {
         logApiFailure(error, "admin state refresh");
         showFeedback(error.message, true);
+      })
+      .then(function () {
+        refreshInProgress = false;
+        if (refreshButton) refreshButton.disabled = false;
       });
   }
 
@@ -166,6 +224,26 @@
     }).catch(function (error) {
       logApiFailure(error, "admin queue action");
       showFeedback(error.message, true);
+    });
+  }
+
+  var refreshButton = document.getElementById("queue-refresh");
+  if (refreshButton) {
+    refreshButton.addEventListener("click", function () {
+      refresh();
+    });
+  }
+
+  var autoRefreshCheckbox = document.getElementById("queue-auto-refresh");
+  if (autoRefreshCheckbox) {
+    autoRefreshCheckbox.addEventListener("change", function () {
+      setAutoRefresh(autoRefreshCheckbox.checked);
+      showFeedback(
+        autoRefreshCheckbox.checked
+          ? "Automatic refresh enabled (every 2 minutes)."
+          : "Automatic refresh disabled.",
+        false
+      );
     });
   }
 
@@ -202,18 +280,18 @@
   if (addForm) {
     addForm.addEventListener("submit", function (event) {
       event.preventDefault();
-      var input = document.getElementById("queue-add-user-id");
-      var userId = parseInt(input.value, 10);
-      if (!Number.isInteger(userId) || userId < 1) {
-        showFeedback("Enter a valid CTFd user ID.", true);
+      var input = document.getElementById("queue-add-username");
+      var username = input.value.trim();
+      if (!username) {
+        showFeedback("Enter a valid CTFd username.", true);
         return;
       }
       runAction(base + "/admin/challenges/" + challengeId + "/entries", "POST", {
-        user_id: userId
+        username: username
       }, "Participant added to the queue.").then(function () { input.value = ""; });
     });
   }
 
   refresh();
-  window.setInterval(refresh, 15000);
+  window.setInterval(tickCounters, 1000);
 })();
