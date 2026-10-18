@@ -237,6 +237,22 @@ class QueueService:
                 "selected_message": challenge.selected_message or "",
             }
 
+        # Eviction is terminal for this queue entry, including for teammates,
+        # but never prevents flag submission through CTFd's native challenge API.
+        if row.state == "evicted":
+            return {
+                "state": "evicted",
+                "can_join": False,
+                "can_leave": False,
+                "can_submit": True,
+                "queue_mode": challenge.queue_mode,
+                "batch_size": challenge.batch_size,
+                "interval_seconds": challenge.interval_seconds,
+                "show_position": False,
+                "show_eta": False,
+                "selected_message": challenge.selected_message or "",
+            }
+
         if row.state != "completed" and row.account_key.startswith("team:") and row.user_id != user.id:
             return {
                 "state": "registered_by_teammate",
@@ -325,8 +341,10 @@ class QueueService:
             if row and row.state in ("waiting", "selected"):
                 db.session.rollback()
                 return QueueService.user_status(challenge.id, user, team)
-            if row and row.state == "completed":
+            if row and row.state in ("completed", "evicted"):
                 db.session.rollback()
+                if row.state == "evicted":
+                    raise QueueError("You have been removed from this queue and cannot rejoin.")
                 raise QueueError("You have already completed this challenge.")
 
             waiters = QueueService.waiting_entries(challenge.id)
@@ -454,7 +472,7 @@ class QueueService:
             ]
             evicted_count = len(evicted_contexts)
             for entry in previously_selected:
-                entry.state = "left"
+                entry.state = "evicted"
                 entry.left_at = now
 
             waiters = QueueService.waiting_entries(challenge.id)
@@ -625,7 +643,9 @@ class QueueService:
             ).first()
             if row and row.state in ("waiting", "selected"):
                 raise QueueError("This user or their team is already in the queue.")
-            if row and row.state == "completed":
+            if row and row.state in ("completed", "evicted"):
+                if row.state == "evicted":
+                    raise QueueError("This user or team has already been evicted from the queue.")
                 raise QueueError("This user or team has already completed the challenge.")
 
             position = len(QueueService.waiting_entries(challenge.id)) + 1
