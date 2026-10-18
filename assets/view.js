@@ -17,6 +17,7 @@ CTFd._internal.challenge.submit = function (preview) {
 (function () {
   var currentStatus = null;
   var busy = false;
+  var liveEtaSeconds = null;
 
   var recentFailureLogs = {};
 
@@ -95,9 +96,30 @@ CTFd._internal.challenge.submit = function (preview) {
     var hours = Math.floor(seconds / 3600);
     var minutes = Math.floor((seconds % 3600) / 60);
     var secs = seconds % 60;
-    if (hours > 0) return hours + "h " + minutes + "m";
-    if (minutes > 0) return minutes + "m " + secs + "s";
+    var mm = String(minutes).padStart(2, "0");
+    var ss = String(secs).padStart(2, "0");
+    if (hours > 0) return hours + "h" + mm + "m" + ss + "s";
+    if (minutes > 0) return minutes + "m" + ss + "s";
     return secs + "s";
+  }
+
+  function renderWaitingDetails() {
+    if (!currentStatus || currentStatus.state !== "waiting") return;
+    var parts = [];
+    if (currentStatus.show_position && currentStatus.position) {
+      parts.push("Position: " + currentStatus.position);
+    }
+    if (currentStatus.show_eta && liveEtaSeconds !== null) {
+      parts.push("Estimated wait: " + formatDuration(liveEtaSeconds));
+    }
+    setText(document.getElementById("queue-details"), parts.join(" · "));
+  }
+
+  function tickEstimatedWait() {
+    if (!currentStatus || currentStatus.state !== "waiting" ||
+        !currentStatus.show_eta || liveEtaSeconds === null) return;
+    if (liveEtaSeconds > 0) liveEtaSeconds -= 1;
+    renderWaitingDetails();
   }
 
   function setText(element, value) {
@@ -106,6 +128,12 @@ CTFd._internal.challenge.submit = function (preview) {
 
   function render(status) {
     currentStatus = status;
+    liveEtaSeconds = status && status.state === "waiting" && status.show_eta &&
+      status.estimated_wait_seconds !== undefined &&
+      status.estimated_wait_seconds !== null &&
+      Number.isFinite(Number(status.estimated_wait_seconds))
+      ? Math.max(0, Math.floor(Number(status.estimated_wait_seconds)))
+      : null;
     var panel = document.getElementById("queue-plugin-panel");
     var message = document.getElementById("queue-status-message");
     var details = document.getElementById("queue-details");
@@ -128,14 +156,7 @@ CTFd._internal.challenge.submit = function (preview) {
         action.classList.add("btn-danger");
         message.className = "alert alert-danger mb-2";
         setText(message, "You are registered and waiting for your turn.");
-        var detailParts = [];
-        if (status.show_position && status.position) {
-          detailParts.push("Position: " + status.position);
-        }
-        if (status.show_eta && status.estimated_wait_seconds !== undefined) {
-          detailParts.push("Estimated wait: " + formatDuration(status.estimated_wait_seconds));
-        }
-        setText(details, detailParts.join(" · "));
+        renderWaitingDetails();
         break;
       case "selected":
         action.textContent = "Selected — you may participate";
@@ -258,6 +279,7 @@ CTFd._internal.challenge.submit = function (preview) {
     window.setInterval(function () {
       if (document.getElementById("queue-action-button")) refresh();
     }, 10000);
+    window.setInterval(tickEstimatedWait, 1000);
   }
 
   if (window.CTFd && CTFd.lib && CTFd.lib.$) {
