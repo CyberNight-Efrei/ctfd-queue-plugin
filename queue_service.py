@@ -450,7 +450,7 @@ class QueueService:
         ids = [
             row.id
             for row in QueueChallengeModel.query.with_entities(QueueChallengeModel.id)
-            .filter_by(queue_mode="automatic")
+            .filter_by(queue_mode="automatic", state="visible")
             .all()
         ]
         processed = 0
