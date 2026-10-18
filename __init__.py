@@ -44,7 +44,15 @@ class QueueChallenge(CTFdStandardChallenge):
 
     @classmethod
     def _normalise_queue_fields(cls, data, error_type, partial=False):
-        result = dict(data)
+        # CTFd's dynamic form serialization can include a control with an empty
+        # name. SQLAlchemy's declarative constructor rejects that as an unknown
+        # model keyword (TypeError: '' is an invalid keyword argument).
+        # Empty/whitespace field names do not represent challenge properties.
+        result = {
+            key: value
+            for key, value in dict(data).items()
+            if isinstance(key, str) and key.strip()
+        }
         allowed_modes = {"manual", "automatic"}
 
         if not partial or "queue_mode" in result:
