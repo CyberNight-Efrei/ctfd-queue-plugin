@@ -296,7 +296,8 @@ def load(app):
         challenge = QueueChallengeModel.query.filter_by(id=challenge_id).first()
         if challenge is None:
             return None
-        if is_admin() and request.args.get("preview"):
+        if is_admin():
+            # Preserve CTFd's existing administrator testing behavior.
             return None
         user = get_current_user()
         if user is None:
