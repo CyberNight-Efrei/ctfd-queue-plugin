@@ -475,7 +475,7 @@ class QueueService:
                     "automatic" if automatic else "manual",
                     challenge.round_number,
                     selected,
-                    len(QueueService.waiting_entries(challenge.id)),
+                    max(0, len(waiters) - selected),
                 )
         except Exception:
             db.session.rollback()
