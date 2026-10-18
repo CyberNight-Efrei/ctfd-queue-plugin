@@ -295,7 +295,7 @@
         direction: action === "move-up" ? "up" : "down"
       }, "Queue order updated.").then(function () { button.disabled = false; });
     } else if (action === "remove") {
-      if (!window.confirm("Remove this participant from the active queue? Flag submissions remain available.")) {
+      if (!window.confirm("Remove this participant from the active queue?")) {
         button.disabled = false;
         return;
       }
@@ -305,20 +305,92 @@
   });
 
   var addForm = document.getElementById("queue-add-user-form");
+  var lookupMode = document.getElementById("queue-add-lookup-mode");
+  var usernameWrap = document.getElementById("queue-add-username-wrap");
+  var userIdWrap = document.getElementById("queue-add-user-id-wrap");
+  var usernameInput = document.getElementById("queue-add-username");
+  var userIdInput = document.getElementById("queue-add-user-id");
+  var suggestionList = document.getElementById("queue-user-suggestions");
+  var suggestionTimer = null;
+  var suggestionRequestId = 0;
+
+  function updateLookupMode() {
+    var byUsername = !lookupMode || lookupMode.value === "username";
+    if (usernameWrap) usernameWrap.hidden = !byUsername;
+    if (userIdWrap) userIdWrap.hidden = byUsername;
+    if (usernameInput) {
+      usernameInput.disabled = !byUsername;
+      usernameInput.required = byUsername;
+    }
+    if (userIdInput) {
+      userIdInput.disabled = byUsername;
+      userIdInput.required = !byUsername;
+    }
+  }
+
+  function fetchUsernameSuggestions() {
+    if (!usernameInput || !suggestionList || !lookupMode || lookupMode.value !== "username") return;
+    var query = usernameInput.value.trim();
+    suggestionRequestId += 1;
+    var requestId = suggestionRequestId;
+    if (suggestionTimer !== null) window.clearTimeout(suggestionTimer);
+    if (!query) {
+      suggestionList.innerHTML = "";
+      return;
+    }
+
+    suggestionTimer = window.setTimeout(function () {
+      api(base + "/admin/users/suggest?q=" + encodeURIComponent(query))
+        .then(function (data) {
+          if (requestId !== suggestionRequestId ||
+              usernameInput.value.trim() !== query ||
+              lookupMode.value !== "username") return;
+          var users = data && Array.isArray(data.users) ? data.users : [];
+          suggestionList.innerHTML = users.map(function (user) {
+            return '<option value="' + escapeHtml(user.username) + '"></option>';
+          }).join("");
+        })
+        .catch(function (error) {
+          logApiFailure(error, "username suggestions");
+        });
+    }, 180);
+  }
+
+  if (lookupMode) lookupMode.addEventListener("change", function () {
+    updateLookupMode();
+    if (suggestionList) suggestionList.innerHTML = "";
+    if (lookupMode.value === "username") fetchUsernameSuggestions();
+  });
+  if (usernameInput) usernameInput.addEventListener("input", fetchUsernameSuggestions);
+  updateLookupMode();
+
   if (addForm) {
     addForm.addEventListener("submit", function (event) {
       event.preventDefault();
-      var input = document.getElementById("queue-add-username");
-      var username = input.value.trim();
-      if (!username) {
-        showFeedback("Enter a valid CTFd username.", true);
-        return;
+      var body;
+      if (!lookupMode || lookupMode.value === "username") {
+        var username = usernameInput ? usernameInput.value.trim() : "";
+        if (!username) {
+          showFeedback("Enter a valid CTFd username.", true);
+          return;
+        }
+        body = { username: username };
+      } else {
+        var userId = userIdInput ? parseInt(userIdInput.value, 10) : NaN;
+        if (!Number.isInteger(userId) || userId < 1) {
+          showFeedback("Enter a valid CTFd user ID.", true);
+          return;
+        }
+        body = { user_id: userId };
       }
-      runAction(base + "/admin/challenges/" + challengeId + "/entries", "POST", {
-        username: username
-      }, "Participant added to the queue.").then(function (succeeded) {
-        if (succeeded) input.value = "";
-      });
+
+      runAction(base + "/admin/challenges/" + challengeId + "/entries", "POST", body,
+        "Participant added to the queue.").then(function (succeeded) {
+          if (!succeeded) return;
+          if (usernameInput) usernameInput.value = "";
+          if (userIdInput) userIdInput.value = "";
+          if (suggestionList) suggestionList.innerHTML = "";
+        });
     });
   }
 
