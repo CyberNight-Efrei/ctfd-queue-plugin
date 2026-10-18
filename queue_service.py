@@ -32,6 +32,12 @@ def _publish_notifications(payloads):
 
         manager = getattr(current_app, "events_manager", None)
         if manager is None:
+            if payloads:
+                log.warning(
+                    "Queue notifications were saved but live delivery is unavailable "
+                    "(event manager missing); notification_count=%s",
+                    len(payloads),
+                )
             return
         for payload in payloads:
             # CTFd's built-in "notification" SSE event is broadcast to every
@@ -108,6 +114,11 @@ class QueueService:
             if not isinstance(payload, dict):
                 payload = {}
         except Exception:
+            log.exception(
+                "Could not serialize queue notification for user_id=%s; "
+                "using fallback payload",
+                entry.user_id,
+            )
             payload = {}
 
         payload.update(
@@ -349,8 +360,20 @@ class QueueService:
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
             db.session.commit()
+            log.info(
+                "Participant joined queue challenge_id=%s user_id=%s team_id=%s position=%s",
+                challenge.id,
+                user.id,
+                team.id if team is not None else None,
+                row.position,
+            )
         except IntegrityError as exc:
             db.session.rollback()
+            log.info(
+                "Queue join lost a concurrent registration race challenge_id=%s user_id=%s",
+                challenge_id,
+                user.id,
+            )
             raise QueueError("You or your team are already registered for this queue.") from exc
         except Exception:
             db.session.rollback()
@@ -385,6 +408,12 @@ class QueueService:
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
             db.session.commit()
+            log.info(
+                "Participant left queue challenge_id=%s user_id=%s team_id=%s",
+                challenge.id,
+                user.id,
+                team.id if team is not None else None,
+            )
         except Exception:
             db.session.rollback()
             raise
@@ -438,6 +467,16 @@ class QueueService:
             QueueService._notify_next(challenge.id, events)
             db.session.commit()
             selected = len(picked)
+            if selected:
+                log.info(
+                    "Queue draw completed challenge_id=%s source=%s round_number=%s "
+                    "selected_count=%s remaining_waiting=%s",
+                    challenge.id,
+                    "automatic" if automatic else "manual",
+                    challenge.round_number,
+                    selected,
+                    len(QueueService.waiting_entries(challenge.id)),
+                )
         except Exception:
             db.session.rollback()
             raise
@@ -558,8 +597,19 @@ class QueueService:
             QueueService._resequence(challenge.id)
             QueueService._notify_next(challenge.id, events)
             db.session.commit()
+            log.info(
+                "Administrator added participant to queue challenge_id=%s user_id=%s admin_user_id=%s",
+                challenge.id,
+                user.id,
+                getattr(get_current_user(), "id", None),
+            )
         except IntegrityError as exc:
             db.session.rollback()
+            log.warning(
+                "Concurrent admin queue registration conflict challenge_id=%s target_user_id=%s",
+                challenge_id,
+                user_id,
+            )
             raise QueueError("This user or their team is already in the queue.") from exc
         except Exception:
             db.session.rollback()
@@ -588,6 +638,13 @@ class QueueService:
             QueueService._notify_next(row.challenge_id, events)
             challenge_id = row.challenge_id
             db.session.commit()
+            log.info(
+                "Administrator reordered queue entry challenge_id=%s entry_id=%s direction=%s admin_user_id=%s",
+                challenge_id,
+                entry_id,
+                direction,
+                getattr(get_current_user(), "id", None),
+            )
         except Exception:
             db.session.rollback()
             raise
@@ -607,6 +664,12 @@ class QueueService:
             QueueService._resequence(challenge_id)
             QueueService._notify_next(challenge_id, events)
             db.session.commit()
+            log.info(
+                "Administrator removed queue entry challenge_id=%s entry_id=%s admin_user_id=%s",
+                challenge_id,
+                entry_id,
+                getattr(get_current_user(), "id", None),
+            )
         except Exception:
             db.session.rollback()
             raise
@@ -615,14 +678,38 @@ class QueueService:
 
     @staticmethod
     def mark_completed(challenge_id, user_id, team_id=None):
-        query = QueueEntry.query.filter_by(
-            challenge_id=challenge_id, user_id=user_id, state="selected"
-        )
-        if _is_team_mode() and team_id is not None:
-            query = query.filter_by(team_id=team_id)
-        entry = query.first()
-        if entry is None:
-            return
-        entry.state = "completed"
-        entry.completed_at = _utcnow()
-        db.session.commit()
+        try:
+            query = QueueEntry.query.filter_by(
+                challenge_id=challenge_id, user_id=user_id, state="selected"
+            )
+            if _is_team_mode() and team_id is not None:
+                query = query.filter_by(team_id=team_id)
+            entry = query.first()
+            if entry is None:
+                log.debug(
+                    "Solved queue challenge has no matching selected entry "
+                    "challenge_id=%s user_id=%s team_id=%s",
+                    challenge_id,
+                    user_id,
+                    team_id,
+                )
+                return
+            entry.state = "completed"
+            entry.completed_at = _utcnow()
+            db.session.commit()
+            log.info(
+                "Selected participant completed queue challenge_id=%s user_id=%s team_id=%s round_number=%s",
+                challenge_id,
+                user_id,
+                team_id,
+                entry.round_number,
+            )
+        except Exception:
+            db.session.rollback()
+            log.exception(
+                "Failed to mark selected participant completed challenge_id=%s user_id=%s team_id=%s",
+                challenge_id,
+                user_id,
+                team_id,
+            )
+            raise
