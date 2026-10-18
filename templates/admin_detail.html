@@ -1,11 +1,15 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-queue-admin-v5">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-queue-admin-v6">
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid queue-admin-page" id="queue-admin-detail" data-challenge-id="{{ challenge.id }}">
+<div class="container-fluid queue-admin-page" id="queue-admin-detail" data-challenge-id="{{ challenge.id }}"
+     data-elapsed-seconds="{{ state.challenge.elapsed_seconds or 0 }}"
+     data-has-drawn="{{ 'true' if state.challenge.has_drawn else 'false' }}"
+     data-next-draw-in-seconds="{{ state.challenge.next_draw_in_seconds or 0 }}"
+     data-queue-mode="{{ challenge.queue_mode }}">
   <div class="queue-page-header">
     <div>
       <a href="{{ url_for('queue_challenge.admin_index') }}" class="queue-back-link">← All queues</a>
