@@ -49,30 +49,57 @@ def _challenge_for_user(challenge_id):
 
     if not is_admin():
         user = get_current_user()
-        if challenge.state != "visible" or not can_access_challenge(challenge, user):
+        user_id = getattr(user, "id", None)
+        try:
+            can_access = (
+                challenge.state == "visible"
+                and can_access_challenge(challenge, user)
+            )
+        except Exception:
+            log.exception(
+                "Failed to evaluate queue challenge access challenge_id=%s user_id=%s",
+                challenge_id,
+                user_id,
+            )
+            abort(500, "The queue request failed unexpectedly. Check CTFd server logs.")
+
+        if not can_access:
             log.debug(
                 "Queue challenge access denied challenge_id=%s user_id=%s",
                 challenge_id,
-                getattr(user, "id", None),
+                user_id,
             )
             abort(404, "Queue challenge not found.")
+
         if challenge.requirements:
-            requirements = challenge.requirements.get("prerequisites", [])
-            solve_rows = (
-                Solves.query.with_entities(Solves.challenge_id)
-                .filter_by(account_id=user.account_id)
-                .all()
-            )
-            solved_ids = {required_id for (required_id,) in solve_rows}
-            all_ids = {
-                row.id for row in Challenges.query.with_entities(Challenges.id).all()
-            }
-            prerequisites = set(requirements).intersection(all_ids)
-            if not solved_ids >= prerequisites:
+            try:
+                requirements = challenge.requirements.get("prerequisites", [])
+                solve_rows = (
+                    Solves.query.with_entities(Solves.challenge_id)
+                    .filter_by(account_id=user.account_id)
+                    .all()
+                )
+                solved_ids = {required_id for (required_id,) in solve_rows}
+                all_ids = {
+                    row.id
+                    for row in Challenges.query.with_entities(Challenges.id).all()
+                }
+                prerequisites = set(requirements).intersection(all_ids)
+                prerequisites_satisfied = solved_ids >= prerequisites
+            except Exception:
+                log.exception(
+                    "Failed to evaluate queue challenge prerequisites "
+                    "challenge_id=%s user_id=%s",
+                    challenge_id,
+                    user_id,
+                )
+                abort(500, "The queue request failed unexpectedly. Check CTFd server logs.")
+
+            if not prerequisites_satisfied:
                 log.debug(
                     "Queue challenge prerequisite check failed challenge_id=%s user_id=%s",
                     challenge_id,
-                    getattr(user, "id", None),
+                    user_id,
                 )
                 abort(404, "Queue challenge not found.")
     return challenge
