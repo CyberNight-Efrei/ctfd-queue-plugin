@@ -110,7 +110,7 @@
           <td class="queue-list-actions">
             <button class="btn btn-sm btn-primary" type="button" data-action="advance" data-challenge-id="{{ item.challenge.id }}">Advance queue</button>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-action="copy-flag" data-challenge-id="{{ item.challenge.id }}">Copy flag</button>
-            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage <span aria-hidden="true">→</span></a>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage queue <span aria-hidden="true">→</span></a>
           </td>
         </tr>
       {% endfor %}
