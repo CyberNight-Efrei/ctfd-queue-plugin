@@ -107,6 +107,14 @@ class QueueChallenge(CTFdStandardChallenge):
 
         data = dict(request.form or request.get_json() or {})
         data = cls._normalise_queue_fields(data, ChallengeCreateException)
+        if (
+            get_config_user_mode() == "teams"
+            and data.get("logic", "any") == "team"
+        ):
+            raise ChallengeCreateException(
+                "Queue challenges select one participant per team and cannot use "
+                "the CTFd 'Require Any Flags by All Team Members' logic."
+            )
         return super().create(SimpleNamespace(form=data, get_json=lambda: data))
 
     @classmethod
@@ -122,6 +130,14 @@ class QueueChallenge(CTFdStandardChallenge):
         data = cls._normalise_queue_fields(
             data, ChallengeUpdateException, partial=True
         )
+        if (
+            get_config_user_mode() == "teams"
+            and data.get("logic", challenge.logic) == "team"
+        ):
+            raise ChallengeUpdateException(
+                "Queue challenges select one participant per team and cannot use "
+                "the CTFd 'Require Any Flags by All Team Members' logic."
+            )
         return super().update(
             challenge, SimpleNamespace(form=data, get_json=lambda: data)
         )
