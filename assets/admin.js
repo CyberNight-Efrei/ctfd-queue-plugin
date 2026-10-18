@@ -82,7 +82,7 @@
     document.getElementById("queue-waiting-count").textContent = state.waiting.length;
     document.getElementById("queue-selected-count").textContent = state.selected.length;
     document.getElementById("queue-round-number").textContent = challenge.round_number;
-    document.getElementById("queue-elapsed").textContent = duration(challenge.elapsed_seconds);
+    document.getElementById("queue-elapsed").textContent = challenge.has_drawn ? duration(challenge.elapsed_seconds) : "No draw yet";
     document.getElementById("queue-mode").textContent = challenge.queue_mode === "automatic" ? "Automatic" : "Manual";
     document.getElementById("queue-batch-size").textContent = challenge.batch_size;
     document.getElementById("queue-interval").textContent = challenge.interval_seconds + " seconds";
