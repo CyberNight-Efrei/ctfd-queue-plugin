@@ -21,7 +21,17 @@
   font-weight: 800;
   letter-spacing: .1em;
 }
-.queue-header-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.queue-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.queue-auto-refresh-toggle {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
+  color: var(--bs-body-color, #334155); font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.queue-auto-refresh-toggle input { width: 16px; height: 16px; margin: 0; accent-color: #2563eb; }
+.queue-refresh-meta { display: flex; justify-content: flex-end; margin: -14px 2px 16px; color: #64748b; font-size: 11px; }
+.queue-mode-badge { margin-left: 6px; padding: 6px 11px; font-size: 12px; }
+.queue-mode-automatic { color: #075985; background: #dbeafe; border: 1px solid #93c5fd; }
+.queue-mode-manual { color: #854d0e; background: #fef3c7; border: 1px solid #fcd34d; }
 .queue-back-link { display: inline-block; margin-bottom: 14px; color: #2563eb; font-weight: 600; }
 .queue-stat-grid {
   display: grid;
