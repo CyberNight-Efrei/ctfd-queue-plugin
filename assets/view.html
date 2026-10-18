@@ -1,0 +1,22 @@
+{% extends "challenge.html" %}
+
+{% block input %}
+<div class="col-12 mb-3" id="queue-plugin-panel" aria-live="polite">
+  <div id="queue-status-message" class="alert alert-secondary mb-2">Loading queue status…</div>
+  <div id="queue-details" class="small text-muted mb-2"></div>
+</div>
+<div class="col-12 col-sm-8" id="queue-flag-input" style="display:none;">
+  <input id="challenge-id" class="challenge-id" type="hidden" value="{{ challenge.id }}">
+  <input id="challenge-input" class="challenge-input form-control" type="text" name="submission"
+         placeholder="Flag" autocomplete="off">
+</div>
+<input id="queue-challenge-id" type="hidden" value="{{ challenge.id }}">
+{% endblock %}
+
+{% block submit %}
+<div class="col-12 col-sm-4 mt-3 mt-sm-0 key-submit">
+  <button id="queue-action-button" class="btn btn-primary w-100" type="button" disabled>Loading…</button>
+  <button id="challenge-submit" class="challenge-submit btn btn-outline-secondary w-100 mt-2"
+          type="submit" style="display:none;">Submit</button>
+</div>
+{% endblock %}
