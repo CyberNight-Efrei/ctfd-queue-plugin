@@ -10,7 +10,7 @@ The challenge inherits CTFd's standard challenge model and scoring implementatio
 - FIFO signup by default, with administrator controls to reorder, add, remove, and revoke participants.
 - In automatic mode, a background worker advances due queues and selects the configured number of waiting entries.
 - In manual mode, administrators advance a queue explicitly from the CTFd administration page.
-- The selected participant receives a CTFd notification when selected. The first waiting participant is notified when they become next in line. Any still-selected entries from the previous round are moved out of the active queue at the next iteration, even when no one is waiting.
+- The selected participant receives a CTFd notification when selected. The first waiting participant is notified when they become next in line. At the next iteration, any entries still selected from the previous round are permanently evicted from the queue, even when no one is waiting.
 - Flag submission is independent of queue state. CTFd's normal challenge, flag, attempt-limit, and team-solving rules remain in effect.
 - In team mode, a queue slot is reserved per team and the registering player receives the selection notification. Any eligible teammate may submit the flag using CTFd's normal team-solving rules.
 - Queue operations and notification records are persisted in CTFd's database.
