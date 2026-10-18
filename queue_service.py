@@ -342,8 +342,9 @@ class QueueService:
                 db.session.rollback()
                 return QueueService.user_status(challenge.id, user, team)
             if row and row.state in ("completed", "evicted"):
+                was_evicted = row.state == "evicted"
                 db.session.rollback()
-                if row.state == "evicted":
+                if was_evicted:
                     raise QueueError("You have been removed from this queue and cannot rejoin.")
                 raise QueueError("You have already completed this challenge.")
 
