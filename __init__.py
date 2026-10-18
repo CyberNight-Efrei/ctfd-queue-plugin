@@ -113,42 +113,64 @@ class QueueChallenge(CTFdStandardChallenge):
         from types import SimpleNamespace
         from CTFd.exceptions.challenges import ChallengeCreateException
 
-        data = dict(request.form or request.get_json() or {})
-        data = cls._normalise_queue_fields(data, ChallengeCreateException)
-        if (
-            get_config_user_mode() == "teams"
-            and data.get("logic", "any") == "team"
-        ):
-            raise ChallengeCreateException(
-                "Queue challenges select one participant per team and cannot use "
-                "the CTFd 'Require Any Flags by All Team Members' logic."
-            )
-        return super().create(SimpleNamespace(form=data, get_json=lambda: data))
+        try:
+            data = dict(request.form or request.get_json() or {})
+            data = cls._normalise_queue_fields(data, ChallengeCreateException)
+            if (
+                get_config_user_mode() == "teams"
+                and data.get("logic", "any") == "team"
+            ):
+                raise ChallengeCreateException(
+                    "Queue challenges select one participant per team and cannot use "
+                    "the CTFd 'Require Any Flags by All Team Members' logic."
+                )
+            result = super().create(SimpleNamespace(form=data, get_json=lambda: data))
+            log.info("Queue challenge created challenge_id=%s", getattr(result, "id", None))
+            return result
+        except ChallengeCreateException as exc:
+            log.warning("Queue challenge creation rejected: %s", exc)
+            raise
+        except Exception:
+            log.exception("Unexpected error creating Queue Challenge")
+            raise
 
     @classmethod
     def update(cls, challenge, request):
         from types import SimpleNamespace
         from CTFd.exceptions.challenges import ChallengeUpdateException
 
-        data = dict(request.form or request.get_json() or {})
-        # Scheduler bookkeeping is server-owned and never accepted from an API client.
-        data.pop("last_draw_at", None)
-        data.pop("last_selection_at", None)
-        data.pop("round_number", None)
-        data = cls._normalise_queue_fields(
-            data, ChallengeUpdateException, partial=True
-        )
-        if (
-            get_config_user_mode() == "teams"
-            and data.get("logic", challenge.logic) == "team"
-        ):
-            raise ChallengeUpdateException(
-                "Queue challenges select one participant per team and cannot use "
-                "the CTFd 'Require Any Flags by All Team Members' logic."
+        try:
+            data = dict(request.form or request.get_json() or {})
+            # Scheduler bookkeeping is server-owned and never accepted from an API client.
+            data.pop("last_draw_at", None)
+            data.pop("last_selection_at", None)
+            data.pop("round_number", None)
+            data = cls._normalise_queue_fields(
+                data, ChallengeUpdateException, partial=True
             )
-        return super().update(
-            challenge, SimpleNamespace(form=data, get_json=lambda: data)
-        )
+            if (
+                get_config_user_mode() == "teams"
+                and data.get("logic", challenge.logic) == "team"
+            ):
+                raise ChallengeUpdateException(
+                    "Queue challenges select one participant per team and cannot use "
+                    "the CTFd 'Require Any Flags by All Team Members' logic."
+                )
+            result = super().update(
+                challenge, SimpleNamespace(form=data, get_json=lambda: data)
+            )
+            log.info("Queue challenge updated challenge_id=%s", challenge.id)
+            return result
+        except ChallengeUpdateException as exc:
+            log.warning(
+                "Queue challenge update rejected challenge_id=%s: %s",
+                challenge.id,
+                exc,
+            )
+            raise
+        except Exception:
+            log.exception("Unexpected error updating Queue Challenge challenge_id=%s", challenge.id)
+            raise
 
     @classmethod
     def read(cls, challenge):
@@ -171,6 +193,10 @@ class QueueChallenge(CTFdStandardChallenge):
 
         user = get_current_user()
         if user is None:
+            log.info(
+                "Queue challenge attempt denied because user is unauthenticated challenge_id=%s",
+                challenge.id,
+            )
             return False, "Sign in and join the queue before submitting a flag."
         if not is_admin():
             entry = QueueEntry.query.filter_by(
@@ -179,10 +205,22 @@ class QueueChallenge(CTFdStandardChallenge):
                 state="selected",
             ).first()
             if entry is None:
+                log.warning(
+                    "Queue challenge attempt denied: participant is not selected challenge_id=%s user_id=%s",
+                    challenge.id,
+                    user.id,
+                )
                 abort(403, description="You must be selected from the queue before attempting this challenge.")
             if entry.account_key.startswith("team:"):
                 team = get_current_team()
                 if team is None or entry.team_id != team.id:
+                    log.warning(
+                        "Queue challenge attempt denied due to team mismatch challenge_id=%s user_id=%s expected_team_id=%s current_team_id=%s",
+                        challenge.id,
+                        user.id,
+                        entry.team_id,
+                        team.id if team is not None else None,
+                    )
                     abort(403, description="The selected queue entry does not match your current team.")
         return super().attempt(challenge, request)
 
@@ -249,10 +287,16 @@ def _start_scheduler_once(app):
 
 
 def load(app):
+    log.info("Initializing Queue Challenge plugin")
     # Importing the models before create_all registers the plugin tables with SQLAlchemy.
-    with app.app_context():
-        db.create_all()
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception:
+        log.exception("Failed to initialize Queue Challenge database tables")
+        raise
 
+    log.info("Queue Challenge database tables initialized")
     CHALLENGE_CLASSES[QueueChallenge.id] = QueueChallenge
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
@@ -338,10 +382,22 @@ def load(app):
             challenge_id=challenge.id, user_id=user.id, state="selected"
         ).first()
         if entry is None:
+            log.warning(
+                "Queue attempt blocked before CTFd attempt counters: participant is not selected challenge_id=%s user_id=%s",
+                challenge.id,
+                user.id,
+            )
             abort(403, description="You must be selected from the queue before attempting this challenge.")
         if entry.account_key.startswith("team:"):
             team = get_current_team()
             if team is None or entry.team_id != team.id:
+                log.warning(
+                    "Queue attempt blocked before CTFd attempt counters: team mismatch challenge_id=%s user_id=%s expected_team_id=%s current_team_id=%s",
+                    challenge.id,
+                    user.id,
+                    entry.team_id,
+                    team.id if team is not None else None,
+                )
                 abort(403, description="The selected queue entry does not match your current team.")
         return None
 
