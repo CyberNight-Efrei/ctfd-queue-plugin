@@ -3,6 +3,8 @@ from flask import request
 from flask_restx import Namespace, Resource, abort
 
 from CTFd.utils.decorators import admins_only, authed_only, during_ctf_time_only
+from CTFd.models import Challenges, Solves
+from CTFd.utils.modules import can_access_challenge
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
 
 from .models import QueueChallengeModel, QueueEntry
@@ -19,8 +21,24 @@ def _challenge_for_user(challenge_id):
         challenge = QueueService.get_challenge(challenge_id)
     except QueueError:
         abort(404, "Queue challenge not found.")
-    if not is_admin() and challenge.state != "visible":
-        abort(404, "Queue challenge not found.")
+    if not is_admin():
+        user = get_current_user()
+        if challenge.state != "visible" or not can_access_challenge(challenge, user):
+            abort(404, "Queue challenge not found.")
+        if challenge.requirements:
+            requirements = challenge.requirements.get("prerequisites", [])
+            solve_rows = (
+                Solves.query.with_entities(Solves.challenge_id)
+                .filter_by(account_id=user.account_id)
+                .all()
+            )
+            solved_ids = {required_id for (required_id,) in solve_rows}
+            all_ids = {
+                row.id for row in Challenges.query.with_entities(Challenges.id).all()
+            }
+            prerequisites = set(requirements).intersection(all_ids)
+            if not solved_ids >= prerequisites:
+                abort(404, "Queue challenge not found.")
     return challenge
 
 
