@@ -4,7 +4,7 @@ import logging
 from flask import request
 from flask_restx import Namespace, Resource, abort
 
-from CTFd.models import Challenges, Solves, Users
+from CTFd.models import Challenges, Flags, Solves, Users
 from CTFd.utils.decorators import admins_only, authed_only, during_ctf_time_only
 from CTFd.utils.modules import can_access_challenge
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
@@ -231,6 +231,41 @@ class AdminQueueAdvance(Resource):
             challenge_id=challenge.id,
         )
 
+
+
+@queue_namespace.route("/admin/challenges/<int:challenge_id>/flag")
+class AdminQueueCopyFlag(Resource):
+    @admins_only
+    def get(self, challenge_id):
+        challenge = _admin_challenge(challenge_id)
+        flags = (
+            Flags.query.filter_by(challenge_id=challenge.id)
+            .order_by(Flags.id.asc())
+            .all()
+        )
+        if not flags:
+            abort(404, "No flag is configured for this challenge.")
+
+        # Prefer a literal static flag if the challenge accepts multiple flag
+        # types. The content is returned only to this admin-only copy action;
+        # the list page never renders it.
+        flag = next(
+            (
+                item for item in flags
+                if getattr(item, "type", None) == "static" and getattr(item, "content", None)
+            ),
+            next((item for item in flags if getattr(item, "content", None)), None),
+        )
+        if flag is None:
+            abort(400, "No copyable flag content is configured for this challenge.")
+        return {
+            "success": True,
+            "data": {
+                "content": flag.content,
+                "type": flag.type,
+                "flag_count": len(flags),
+            },
+        }
 
 @queue_namespace.route("/admin/challenges/<int:challenge_id>/entries")
 class AdminQueueAdd(Resource):
