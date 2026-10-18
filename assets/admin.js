@@ -12,10 +12,33 @@
     };
     if (body !== undefined) options.body = JSON.stringify(body);
     return CTFd.fetch(path, options).then(function (response) {
-      if (!response || response.success !== true) {
-        throw new Error((response && (response.message || response.description)) || "Request failed.");
+      if (!response || typeof response.json !== "function") {
+        throw new Error("Request failed.");
       }
-      return response.data;
+      return response.json().catch(function () {
+        return null;
+      }).then(function (payload) {
+        if (!response.ok || !payload || payload.success !== true) {
+          var message = payload && (payload.message || payload.description || payload.error);
+          if (!message && payload && payload.errors) {
+            if (typeof payload.errors === "string") {
+              message = payload.errors;
+            } else if (Array.isArray(payload.errors)) {
+              message = payload.errors.join("; ");
+            } else if (typeof payload.errors === "object") {
+              message = Object.keys(payload.errors).map(function (key) {
+                var value = payload.errors[key];
+                return key + ": " + (Array.isArray(value) ? value.join(", ") : String(value));
+              }).join("; ");
+            }
+          }
+          if (!message) {
+            message = response.status ? "HTTP " + response.status : "Request failed.";
+          }
+          throw new Error(message);
+        }
+        return payload.data;
+      });
     });
   }
 
