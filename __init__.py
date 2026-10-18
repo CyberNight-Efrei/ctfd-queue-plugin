@@ -236,11 +236,18 @@ class QueueChallenge(CTFdStandardChallenge):
 
     @classmethod
     def delete(cls, challenge):
-        QueueEntry.query.filter_by(challenge_id=challenge.id).delete(
-            synchronize_session=False
-        )
-        db.session.commit()
-        return super().delete(challenge)
+        try:
+            QueueEntry.query.filter_by(challenge_id=challenge.id).delete(
+                synchronize_session=False
+            )
+            db.session.commit()
+            result = super().delete(challenge)
+            log.info("Queue challenge deleted challenge_id=%s", challenge.id)
+            return result
+        except Exception:
+            db.session.rollback()
+            log.exception("Failed to delete queue challenge challenge_id=%s", challenge.id)
+            raise
 
 
 def get_config_user_mode():
@@ -273,6 +280,9 @@ def _start_scheduler_once(app):
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except (BlockingIOError, OSError):
             handle.close()
+            log.debug(
+                "Queue Challenge scheduler is already owned by another worker on this host"
+            )
             return
         _scheduler_lock_handle = handle
         threading.Thread(
