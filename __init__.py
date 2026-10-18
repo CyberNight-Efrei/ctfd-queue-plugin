@@ -25,7 +25,7 @@ _scheduler_lock_handle = None
 
 
 class QueueChallenge(CTFdStandardChallenge):
-    """Native CTFd challenge type with queue-gated attempts and native scoring."""
+    """Native CTFd challenge type with round-based queueing and native scoring."""
 
     id = "queue"
     name = "Queue Challenge"
