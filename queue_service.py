@@ -139,8 +139,7 @@ class QueueService:
             QueueService._notification_for(
                 head,
                 "You are next in the queue",
-                "You are currently first in the queue for **{}**. Please be ready."
-                .format(head.challenge.name),
+                "You are currently first in the queue. Please be ready for the next draw.",
             )
         )
 
@@ -421,8 +420,7 @@ class QueueService:
                         QueueService._notification_for(
                             entry,
                             "You have been selected!",
-                            "You have been selected for **{}** and can now submit your flag."
-                            .format(challenge.name),
+                            "You have been selected and can now submit your flag.",
                         )
                     )
             QueueService._resequence(challenge.id)
