@@ -92,8 +92,10 @@
     var h = Math.floor(seconds / 3600);
     var m = Math.floor((seconds % 3600) / 60);
     var s = seconds % 60;
-    if (h) return h + "h" + m + "m" + s + "s";
-    if (m) return m + "m" + s + "s";
+    var mm = String(m).padStart(2, "0");
+    var ss = String(s).padStart(2, "0");
+    if (h) return h + "h" + mm + "m" + ss + "s";
+    if (m) return m + "m" + ss + "s";
     return s + "s";
   }
 
