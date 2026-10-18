@@ -116,8 +116,10 @@ CTFd._internal.challenge.submit = function (preview) {
 
     action.disabled = false;
     action.className = "btn w-100";
-    if (flagInput) flagInput.style.display = "none";
-    if (submit) submit.style.display = "none";
+    // Flag submission is independent of queue state and remains available
+    // while waiting, selected, evicted, or already completed.
+    if (flagInput) flagInput.style.display = "";
+    if (submit) submit.style.display = "";
     if (details) details.textContent = "";
 
     switch (status.state) {
@@ -141,8 +143,6 @@ CTFd._internal.challenge.submit = function (preview) {
         action.disabled = true;
         message.className = "alert alert-success mb-2";
         setText(message, status.selected_message || "You have been selected! You may now attempt this challenge.");
-        if (flagInput) flagInput.style.display = "";
-        if (submit) submit.style.display = "";
         if (details && status.round_number) setText(details, "Selection round " + status.round_number);
         break;
       case "registered_by_teammate":
