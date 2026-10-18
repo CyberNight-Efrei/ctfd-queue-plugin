@@ -26,7 +26,7 @@ CTFd._internal.challenge.submit = function (preview) {
     };
     if (body !== undefined) options.body = JSON.stringify(body);
     return CTFd.fetch(path, options).then(function (response) {
-      if (!response || response.success === false) {
+      if (!response || response.success !== true) {
         var message = response && (response.message || response.description);
         throw new Error(message || "The queue request failed.");
       }
