@@ -53,6 +53,14 @@ class QueueChallenge(CTFdStandardChallenge):
                 raise error_type("Queue mode must be manual or automatic.")
             result["queue_mode"] = mode
 
+        if not partial or "function" in result:
+            scoring_function = str(result.get("function", "static")).strip().lower()
+            if scoring_function not in ("static", "linear", "logarithmic"):
+                raise error_type(
+                    "Scoring function must be static, linear or logarithmic."
+                )
+            result["function"] = scoring_function
+
         for key, default, minimum, maximum in (
             ("batch_size", 1, 1, 1000),
             ("interval_seconds", 900, 1, 86400),
