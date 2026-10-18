@@ -10,6 +10,7 @@ from CTFd.api import CTFd_API_v1
 from CTFd.plugins import (
     register_admin_plugin_menu_bar,
     register_plugin_assets_directory,
+    register_plugin_script,
 )
 from CTFd.plugins.challenges import CHALLENGE_CLASSES, CTFdStandardChallenge
 from CTFd.utils.decorators import admins_only
@@ -224,6 +225,7 @@ def load(app):
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
     )
+    register_plugin_script("plugins/queue_challenge/assets/notifications.js")
     register_admin_plugin_menu_bar(
         title="Queues", route="/plugins/ctfd-queue/admin"
     )
