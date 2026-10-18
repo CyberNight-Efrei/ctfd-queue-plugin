@@ -67,7 +67,7 @@
           '</td><td class="text-right"><button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' +
           entry.id + '">Revoke selection</button></td></tr>';
       }
-      return '<tr><td><span class="queue-position">' + escapeHtml(entry.position) + "</span></td><td>" +
+      return '<tr><td><span class="queue-position">' + escapeHtml(entry.position) + "</span>" + (Number(entry.position) === 1 ? ' <span class="queue-badge queue-badge-auto ml-2">Next</span>' : "") + "</td><td>" +
         identity + "</td><td>" + team + "</td><td>" + escapeHtml(timeLabel(entry.joined_at)) +
         '</td><td class="queue-row-actions">' +
         '<button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="' + entry.id + '" aria-label="Move up">↑</button>' +
