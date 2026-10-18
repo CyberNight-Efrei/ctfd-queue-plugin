@@ -199,11 +199,20 @@ class QueueChallenge(CTFdStandardChallenge):
             )
             return False, "Sign in and join the queue before submitting a flag."
         if not is_admin():
-            entry = QueueEntry.query.filter_by(
-                challenge_id=challenge.id,
-                user_id=user.id,
-                state="selected",
-            ).first()
+            try:
+                entry = QueueEntry.query.filter_by(
+                    challenge_id=challenge.id,
+                    user_id=user.id,
+                    state="selected",
+                ).first()
+            except Exception:
+                log.exception(
+                    "Failed to verify queue selection during challenge attempt "
+                    "challenge_id=%s user_id=%s",
+                    challenge.id,
+                    user.id,
+                )
+                raise
             if entry is None:
                 log.warning(
                     "Queue challenge attempt denied: participant is not selected challenge_id=%s user_id=%s",
@@ -379,7 +388,14 @@ def load(app):
             challenge_id = int((data or {}).get("challenge_id"))
         except (TypeError, ValueError):
             return None
-        challenge = QueueChallengeModel.query.filter_by(id=challenge_id).first()
+        try:
+            challenge = QueueChallengeModel.query.filter_by(id=challenge_id).first()
+        except Exception:
+            log.exception(
+                "Failed to look up queue challenge before CTFd attempt challenge_id=%s",
+                challenge_id,
+            )
+            raise
         if challenge is None:
             return None
         if is_admin():
@@ -388,9 +404,18 @@ def load(app):
         user = get_current_user()
         if user is None:
             return None
-        entry = QueueEntry.query.filter_by(
-            challenge_id=challenge.id, user_id=user.id, state="selected"
-        ).first()
+        try:
+            entry = QueueEntry.query.filter_by(
+                challenge_id=challenge.id, user_id=user.id, state="selected"
+            ).first()
+        except Exception:
+            log.exception(
+                "Failed to verify queue selection before CTFd attempt "
+                "challenge_id=%s user_id=%s",
+                challenge.id,
+                user.id,
+            )
+            raise
         if entry is None:
             log.warning(
                 "Queue attempt blocked before CTFd attempt counters: participant is not selected challenge_id=%s user_id=%s",
