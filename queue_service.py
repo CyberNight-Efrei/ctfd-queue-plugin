@@ -571,9 +571,7 @@ class QueueService:
                         QueueService._notification_for(
                             entry,
                             "You have been selected!",
-                            "You have been selected for this queue round. "
-                            "You can submit the flag at any time, independently "
-                            "of your queue state.",
+                            "You have been selected for this queue round.",
                         )
                     )
             QueueService._resequence(challenge.id)
