@@ -40,7 +40,7 @@ CTFd's native scoring options are available directly during creation: static, li
 
 The Queues menu provides an overview of all queue challenges. Each challenge detail page shows selected participants, the waiting queue, round number, time since the last draw, progression mode, interval, and batch size.
 
-Administrators can advance the queue, move waiting participants up or down, remove a participant from the active queue, or add a CTFd user by ID. Removing a selection affects queue membership only; it does not block flag submissions or delete/rewrite CTFd solves.
+Administrators can advance the queue, move waiting participants up or down, remove a participant from the active queue, or add a CTFd user by ID. Removing a selection affects queue membership only; it does not block flag submissions or delete/rewrite CTFd solves. Automatic/manual next-round eviction is terminal for the queue entry, but not for flag submission.
 
 ## Automatic progression and deployments
 
