@@ -216,7 +216,7 @@ class QueueService:
                 "selected_message": challenge.selected_message or "",
             }
 
-        if row.account_key.startswith("team:") and row.user_id != user.id:
+        if row.state != "completed" and row.account_key.startswith("team:") and row.user_id != user.id:
             return {
                 "state": "registered_by_teammate",
                 "can_join": False,
@@ -409,6 +409,7 @@ class QueueService:
             picked = waiters[:batch_size]
             challenge.round_number = int(challenge.round_number or 0) + 1
             challenge.last_draw_at = now
+            challenge.last_selection_at = now
             for entry in picked:
                 entry.state = "selected"
                 entry.round_number = challenge.round_number
@@ -465,8 +466,18 @@ class QueueService:
         selected = QueueService.selected_entries(challenge.id)
         waiting = QueueService.waiting_entries(challenge.id)
         now = _utcnow()
-        last_draw = challenge.last_draw_at or now
-        elapsed = max(0, int((now - last_draw).total_seconds()))
+        last_selection = challenge.last_selection_at
+        elapsed = (
+            max(0, int((now - last_selection).total_seconds()))
+            if last_selection
+            else None
+        )
+        timer_reference = challenge.last_draw_at or now
+        next_draw_in = max(
+            0,
+            int(challenge.interval_seconds or 1)
+            - max(0, int((now - timer_reference).total_seconds())),
+        )
         return {
             "challenge": {
                 "id": challenge.id,
@@ -477,12 +488,11 @@ class QueueService:
                 "show_position": bool(challenge.show_position),
                 "show_eta": bool(challenge.show_eta),
                 "selected_message": challenge.selected_message or "",
-                "last_draw_at": last_draw.isoformat(),
+                "last_draw_at": last_selection.isoformat() if last_selection else None,
+                "has_drawn": last_selection is not None,
                 "round_number": challenge.round_number or 0,
                 "elapsed_seconds": elapsed,
-                "next_draw_in_seconds": max(
-                    0, int(challenge.interval_seconds or 1) - elapsed
-                ),
+                "next_draw_in_seconds": next_draw_in,
             },
             "selected": [QueueService._serialize_entry(entry) for entry in selected],
             "waiting": [
