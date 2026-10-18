@@ -121,7 +121,7 @@
         return "<tr><td>" + identity + '</td><td>' + team + '</td><td>' +
           escapeHtml(entry.round_number || "—") + '</td><td>' + escapeHtml(timeLabel(entry.selected_at)) +
           '</td><td class="text-right"><button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' +
-          entry.id + '">Revoke selection</button></td></tr>';
+          entry.id + '">Remove from queue</button></td></tr>';
       }
       return '<tr><td><span class="queue-position">' + escapeHtml(entry.position) + "</span>" + (Number(entry.position) === 1 ? ' <span class="queue-badge queue-badge-auto ml-2">Next</span>' : "") + "</td><td>" +
         identity + "</td><td>" + team + "</td><td>" + escapeHtml(timeLabel(entry.joined_at)) +
@@ -189,7 +189,7 @@
         direction: action === "move-up" ? "up" : "down"
       }, "Queue order updated.").then(function () { button.disabled = false; });
     } else if (action === "remove") {
-      if (!window.confirm("Remove this participant from the queue or revoke their selection?")) {
+      if (!window.confirm("Remove this participant from the active queue? Flag submissions remain available.")) {
         button.disabled = false;
         return;
       }
