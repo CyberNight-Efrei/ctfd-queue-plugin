@@ -12,7 +12,7 @@
     };
     if (body !== undefined) options.body = JSON.stringify(body);
     return CTFd.fetch(path, options).then(function (response) {
-      if (!response || response.success === false) {
+      if (!response || response.success !== true) {
         throw new Error((response && (response.message || response.description)) || "Request failed.");
       }
       return response.data;
