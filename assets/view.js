@@ -144,8 +144,6 @@ CTFd._internal.challenge.submit = function (preview) {
 
     action.disabled = false;
     action.className = "btn w-100";
-    // Flag submission is independent of queue state and remains available
-    // while waiting, selected, evicted, or already completed.
     if (flagInput) flagInput.style.display = "";
     if (submit) submit.style.display = "";
     if (details) details.textContent = "";
@@ -185,7 +183,7 @@ CTFd._internal.challenge.submit = function (preview) {
         action.classList.add("btn-secondary");
         action.disabled = true;
         message.className = "alert alert-info mb-2";
-        setText(message, "Your queue participation has ended for this challenge. You may still submit the flag at any time.");
+        setText(message, "Your queue participation has ended for this challenge.");
         break;
       case "needs_team":
         action.textContent = "Join a team first";
