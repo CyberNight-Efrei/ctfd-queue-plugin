@@ -127,11 +127,16 @@ class QueueService:
 
     @staticmethod
     def _notify_next(challenge_id, events):
-        head = (
-            QueueEntry.query.filter_by(challenge_id=challenge_id, state="waiting")
-            .order_by(QueueEntry.position.asc(), QueueEntry.id.asc())
-            .first()
-        )
+        waiters = QueueService.waiting_entries(challenge_id)
+        head = waiters[0] if waiters else None
+
+        # next_notified_at represents the current "next" turn. Clear it on
+        # anyone who is no longer first, so a later reorder can notify them
+        # again if they become the head of the queue a second time.
+        for entry in waiters[1:]:
+            if entry.next_notified_at is not None:
+                entry.next_notified_at = None
+
         if head is None or head.next_notified_at is not None:
             return
         head.next_notified_at = _utcnow()
