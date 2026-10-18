@@ -42,8 +42,20 @@
     }
   });
 
+  var connectionErrorReported = false;
+
+  source.addEventListener("open", function () {
+    connectionErrorReported = false;
+  });
+
   source.addEventListener("error", function () {
-    // EventSource reconnects automatically. Persistent notifications remain in
-    // CTFd's notifications table even when live events are temporarily offline.
+    // EventSource reconnects automatically. Log once per outage to avoid console spam.
+    if (connectionErrorReported) return;
+    connectionErrorReported = true;
+    if (window.console && typeof console.warn === "function") {
+      console.warn(
+        "[Queue Challenge] Live notification stream disconnected; browser reconnection is automatic."
+      );
+    }
   });
 })();
