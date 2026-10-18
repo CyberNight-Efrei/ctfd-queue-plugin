@@ -4,7 +4,7 @@ import os
 import threading
 import time
 
-from flask import Blueprint, abort, render_template, request
+from flask import Blueprint, abort, render_template
 
 from CTFd.api import CTFd_API_v1
 from CTFd.plugins import (
