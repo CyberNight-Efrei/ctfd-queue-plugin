@@ -33,7 +33,7 @@ No additional Python package is required; the plugin uses CTFd's existing Flask,
 3. Configure progression mode (manual or automatic), batch size, interval in seconds, position visibility, estimated wait visibility, and the plain-text message shown after selection.
 4. Save the challenge. In the CTFd Queues admin menu, open it to review and manage the queue.
 
-CTFd's native scoring options are available directly during creation: static, linear decay, and logarithmic decay. Existing queue challenges can change scoring in the normal challenge editor, using the same CTFd formulas. Standard CTFd team-solving logic is allowed because queue selection no longer gates flag attempts.
+CTFd's native scoring options are available directly during creation: static, linear decay, and logarithmic decay. Existing queue challenges can change scoring in the normal challenge editor, using the same CTFd formulas. CTFd's native scoring functions and configured team-solving rules continue to apply.
 
 ## Administrator controls
 
