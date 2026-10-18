@@ -38,7 +38,7 @@ CTFd's native scoring options are available directly during creation: static, li
 
 ## Administrator controls
 
-The Queues menu provides an overview of all queue challenges. Each challenge detail page shows selected participants, the waiting queue, round number, time since the last draw, progression mode, interval, and batch size.
+The Queues menu provides an overview of all queue challenges. The overview supports filtering by challenge name, visibility, and progression mode; each row can advance its queue or copy a configured flag directly to the clipboard without displaying it. Administrators can select multiple challenges and advance their queues in one batch operation. Each challenge detail page shows selected participants, the waiting queue, round number, time since the last draw, progression mode, interval, and batch size.
 
 Administrators can manually refresh the queue state, optionally enable automatic refresh every two minutes, and advance the queue, move waiting participants up or down, or remove a participant from the active queue. Participants can be added directly by their CTFd username (or by user ID through the API). The participant's estimated wait and the administrator's elapsed-since-draw and next-draw estimates update every second between status refreshes; the queue mode is shown as a colored badge. Removing a selection affects queue membership only; it does not block flag submissions or delete/rewrite CTFd solves. Automatic/manual next-round eviction is terminal for the queue entry, but not for flag submission.
 
