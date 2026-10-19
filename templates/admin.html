@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-mobile-v1">
 {% endblock %}
 
 {% block content %}
@@ -67,8 +67,9 @@
     <span id="queue-filter-result-count" class="text-muted small">{{ queue_challenges|length }} challenges</span>
   </div>
 
-  <div class="table-responsive queue-table-wrap">
-    <table class="table queue-table">
+  <p class="queue-mobile-scroll-hint"><span aria-hidden="true">↔</span> Swipe horizontally to see all columns. The actions column stays visible.</p>
+  <div class="table-responsive queue-table-wrap" role="region" aria-label="Challenge queues table" tabindex="0">
+    <table class="table queue-table queue-list-table">
       <thead>
         <tr>
           <th class="queue-checkbox-cell"><span class="sr-only">Select</span></th>
