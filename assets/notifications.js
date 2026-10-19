@@ -38,7 +38,7 @@
 
     var requestPath = path;
     if (path.charAt(0) === "/" && root) {
-      requestPath = root.replace(/\\/+$/, "") + path;
+      requestPath = root.replace(/\/+$/, "") + path;
     }
     var safeMethod = /^(GET|HEAD|OPTIONS|TRACE)$/i.test(options.method);
     var csrfNonce = window.init && window.init.csrfNonce;
