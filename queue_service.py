@@ -514,31 +514,38 @@ class QueueService:
             waiters = QueueService.waiting_entries(challenge.id)
             source = "automatic" if automatic else "manual"
             if not waiters:
-                if only_if_due or evicted_count:
-                    # Empty automatic rounds still advance the timer, so a new
-                    # signup does not get selected immediately after a long idle.
-                    challenge.last_draw_at = now
-                    db.session.commit()
-                    for entry_id, user_id, team_id, round_number in evicted_contexts:
-                        log.info(
-                            "Selected participant evicted from queue at next iteration "
-                            "challenge_id=%s entry_id=%s user_id=%s team_id=%s round_number=%s",
-                            challenge_id,
-                            entry_id,
-                            user_id,
-                            team_id,
-                            round_number,
-                        )
-                    if evicted_count:
-                        log.info(
-                            "Queue iteration completed with no new selections "
-                            "challenge_id=%s source=%s evicted_count=%s",
-                            challenge_id,
-                            source,
-                            evicted_count,
-                        )
+                # A draw is still an event when the queue is empty. Record its
+                # timestamp so the admin elapsed counter always has a reference
+                # and automatic mode starts a fresh interval from this draw.
+                challenge.last_draw_at = now
+                challenge.last_selection_at = now
+                db.session.commit()
+                for entry_id, user_id, team_id, round_number in evicted_contexts:
+                    log.info(
+                        "Selected participant evicted from queue at next iteration "
+                        "challenge_id=%s entry_id=%s user_id=%s team_id=%s round_number=%s",
+                        challenge_id,
+                        entry_id,
+                        user_id,
+                        team_id,
+                        round_number,
+                    )
+                if evicted_count:
+                    log.info(
+                        "Queue iteration completed with no new selections "
+                        "challenge_id=%s source=%s evicted_count=%s",
+                        challenge_id,
+                        source,
+                        evicted_count,
+                    )
                 else:
-                    db.session.rollback()
+                    log.info(
+                        "Queue draw completed with no participants "
+                        "challenge_id=%s source=%s round_number=%s",
+                        challenge_id,
+                        source,
+                        challenge.round_number or 0,
+                    )
                 return {"selected": 0, "evicted": evicted_count, "due": True}
 
             batch_size = max(1, int(challenge.batch_size or 1))
@@ -627,13 +634,13 @@ class QueueService:
         selected = QueueService.selected_entries(challenge.id)
         waiting = QueueService.waiting_entries(challenge.id)
         now = _utcnow()
-        last_selection = challenge.last_selection_at
+        last_draw = challenge.last_draw_at
         elapsed = (
-            max(0, int((now - last_selection).total_seconds()))
-            if last_selection
-            else None
+            max(0, int((now - last_draw).total_seconds()))
+            if last_draw
+            else 0
         )
-        timer_reference = challenge.last_draw_at or now
+        timer_reference = last_draw or now
         next_draw_in = max(
             0,
             int(challenge.interval_seconds or 1)
@@ -649,8 +656,8 @@ class QueueService:
                 "show_position": bool(challenge.show_position),
                 "show_eta": bool(challenge.show_eta),
                 "selected_message": challenge.selected_message or "",
-                "last_draw_at": last_selection.isoformat() if last_selection else None,
-                "has_drawn": last_selection is not None,
+                "last_draw_at": last_draw.isoformat() if last_draw else None,
+                "has_drawn": last_draw is not None,
                 "round_number": challenge.round_number or 0,
                 "elapsed_seconds": elapsed,
                 "next_draw_in_seconds": next_draw_in,
