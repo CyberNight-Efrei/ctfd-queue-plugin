@@ -31,6 +31,7 @@
     var options = {
       method: method || "GET",
       credentials: "same-origin",
+      cache: "no-store",
       headers: { Accept: "application/json", "Content-Type": "application/json" }
     };
     if (body !== undefined) options.body = JSON.stringify(body);
@@ -218,24 +219,39 @@
   }
 
   function refresh() {
-    if (refreshInProgress) return Promise.resolve();
+    if (refreshInProgress) return Promise.resolve(false);
     refreshInProgress = true;
     var refreshButton = document.getElementById("queue-refresh");
-    if (refreshButton) refreshButton.disabled = true;
+    var refreshStatus = document.getElementById("queue-refresh-status");
+    var originalLabel = refreshButton ? refreshButton.innerHTML : "";
+    if (refreshButton) {
+      refreshButton.disabled = true;
+      refreshButton.innerHTML = '<span aria-hidden="true">↻</span> Refreshing…';
+    }
+    if (refreshStatus) refreshStatus.textContent = "Refreshing queue data…";
 
-    return api(base + "/admin/challenges/" + challengeId + "/state")
+    // A unique query parameter and cache: no-store ensure that manual refresh
+    // always requests the current queue state instead of a cached GET response.
+    var stateUrl = base + "/admin/challenges/" + challengeId + "/state?_refresh=" + Date.now();
+    return api(stateUrl)
       .then(function (state) {
         renderState(state);
-        var refreshStatus = document.getElementById("queue-refresh-status");
         if (refreshStatus) refreshStatus.textContent = "Last refreshed at " + new Date().toLocaleTimeString();
+        return true;
       })
       .catch(function (error) {
         logApiFailure(error, "admin state refresh");
-        showFeedback(error.message, true);
+        if (refreshStatus) refreshStatus.textContent = "Refresh failed at " + new Date().toLocaleTimeString();
+        showFeedback("Could not refresh queue data: " + error.message, true);
+        return false;
       })
-      .then(function () {
+      .then(function (succeeded) {
         refreshInProgress = false;
-        if (refreshButton) refreshButton.disabled = false;
+        if (refreshButton) {
+          refreshButton.disabled = false;
+          refreshButton.innerHTML = originalLabel;
+        }
+        return succeeded;
       });
   }
 
@@ -254,7 +270,8 @@
 
   var refreshButton = document.getElementById("queue-refresh");
   if (refreshButton) {
-    refreshButton.addEventListener("click", function () {
+    refreshButton.addEventListener("click", function (event) {
+      event.preventDefault();
       refresh();
     });
   }
