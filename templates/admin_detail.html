@@ -69,7 +69,11 @@
             <td>{{ entry.round_number or '—' }}</td>
             <td>{{ entry.selected_at or '—' }}</td>
             <td class="queue-row-actions">
+              {% if entry.team_id %}
               <button class="btn btn-sm btn-outline-primary" type="button" data-action="notify-flag" data-entry-id="{{ entry.id }}">Send flag to team</button>
+              {% else %}
+              <button class="btn btn-sm btn-outline-secondary" type="button" disabled title="This participant is not associated with a team">No team</button>
+              {% endif %}
               <button class="btn btn-sm btn-outline-danger" type="button" data-action="remove" data-entry-id="{{ entry.id }}">Remove from queue</button>
             </td>
           </tr>
