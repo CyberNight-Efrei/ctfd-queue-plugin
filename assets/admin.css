@@ -552,3 +552,44 @@
     padding: 10px;
   }
 }
+
+
+/* Queue challenge admin detail: visible autocomplete and elapsed-clock states */
+.queue-user-suggestions {
+  position: absolute;
+  z-index: 1050;
+  left: 0;
+  right: 0;
+  top: calc(100% + 3px);
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid rgba(100, 116, 139, .35);
+  border-radius: 8px;
+  background: var(--bs-card-bg, #fff);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+}
+.queue-user-suggestions[hidden] { display: none !important; }
+.queue-add-form #queue-add-username-wrap { position: relative; width: 100%; }
+.queue-user-suggestion-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(100, 116, 139, .12);
+  background: transparent;
+  color: var(--bs-body-color, #263238);
+  text-align: left;
+  cursor: pointer;
+}
+.queue-user-suggestion-option:last-child { border-bottom: 0; }
+.queue-user-suggestion-option:hover,
+.queue-user-suggestion-option:focus {
+  background: rgba(59, 130, 246, .1);
+  outline: none;
+}
+.queue-user-suggestion-option small { color: #64748b; white-space: nowrap; }
+#queue-elapsed.queue-time-warning { color: var(--bs-warning, #d97706) !important; }
+#queue-elapsed.queue-time-danger { color: var(--bs-danger, #dc2626) !important; }
