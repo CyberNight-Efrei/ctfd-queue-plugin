@@ -157,9 +157,9 @@ CTFd._internal.challenge.submit = function (preview) {
         renderWaitingDetails();
         break;
       case "selected":
-        action.textContent = "Selected — you may participate";
-        action.classList.add("btn-success");
-        action.disabled = true;
+        action.textContent = "Leave queue";
+        action.classList.add("btn-danger");
+        action.disabled = !status.can_leave;
         message.className = "alert alert-success mb-2";
         setText(message, status.selected_message || "You have been selected! You may now attempt this challenge.");
         if (details && status.round_number) setText(details, "Selection round " + status.round_number);
@@ -178,13 +178,7 @@ CTFd._internal.challenge.submit = function (preview) {
         message.className = "alert alert-info mb-2";
         setText(message, "You have already completed this queue challenge.");
         break;
-      case "evicted":
-        action.textContent = "Removed from queue";
-        action.classList.add("btn-secondary");
-        action.disabled = true;
-        message.className = "alert alert-info mb-2";
-        setText(message, "Your queue participation has ended for this challenge.");
-        break;
+
       case "needs_team":
         action.textContent = "Join a team first";
         action.classList.add("btn-secondary");
