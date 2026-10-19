@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-mobile-v1">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-mobile-v2">
 {% endblock %}
 
 {% block content %}
@@ -90,24 +90,24 @@
             data-challenge-name="{{ item.challenge.name|lower }}"
             data-visibility="{{ visibility }}"
             data-mode="{{ item.challenge.queue_mode }}">
-          <td class="queue-checkbox-cell">
+          <td class="queue-checkbox-cell" data-label="Select">
             <input class="queue-challenge-checkbox" type="checkbox" value="{{ item.challenge.id }}"
                    aria-label="Select {{ item.challenge.name|e }}">
           </td>
-          <td>
+          <td data-label="Challenge">
             <div class="queue-challenge-title">{{ item.challenge.name }}</div>
             <div class="text-muted small">ID {{ item.challenge.id }} · {{ item.challenge.category }}</div>
           </td>
-          <td>
+          <td data-label="Visibility">
             <span class="queue-badge queue-visibility-badge {{ 'queue-visibility-visible' if visibility == 'visible' else 'queue-visibility-hidden' if visibility == 'hidden' else 'queue-visibility-other' }}">
               {{ visibility|capitalize }}
             </span>
           </td>
-          <td><span class="queue-badge {{ 'queue-badge-auto' if item.challenge.queue_mode == 'automatic' else 'queue-badge-manual' }}">{{ 'Automatic' if item.challenge.queue_mode == 'automatic' else 'Manual' }}</span></td>
-          <td>{{ item.challenge.batch_size }} per draw</td>
-          <td><span class="queue-count queue-waiting-count">{{ item.waiting_count }}</span></td>
-          <td><span class="queue-count queue-count-selected queue-selected-count">{{ item.selected_count }}</span></td>
-          <td class="queue-list-actions">
+          <td data-label="Progression"><span class="queue-badge {{ 'queue-badge-auto' if item.challenge.queue_mode == 'automatic' else 'queue-badge-manual' }}">{{ 'Automatic' if item.challenge.queue_mode == 'automatic' else 'Manual' }}</span></td>
+          <td data-label="Batch size">{{ item.challenge.batch_size }} per draw</td>
+          <td data-label="Waiting"><span class="queue-count queue-waiting-count">{{ item.waiting_count }}</span></td>
+          <td data-label="Selected"><span class="queue-count queue-count-selected queue-selected-count">{{ item.selected_count }}</span></td>
+          <td class="queue-list-actions" data-label="Actions">
             <button class="btn btn-sm btn-primary" type="button" data-action="advance" data-challenge-id="{{ item.challenge.id }}">Advance queue</button>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-action="copy-flag" data-challenge-id="{{ item.challenge.id }}">Copy flag</button>
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage queue <span aria-hidden="true">→</span></a>
