@@ -35,7 +35,7 @@
       headers: { Accept: "application/json", "Content-Type": "application/json" }
     };
     if (body !== undefined) options.body = JSON.stringify(body);
-    return CTFd.fetch(path, options).then(function (response) {
+    return window.fetch(path, options).then(function (response) {
       if (!response || typeof response.json !== "function") {
         var invalidResponse = new Error("Request failed.");
         invalidResponse.queuePath = path;
@@ -107,6 +107,8 @@
   };
   var refreshInProgress = false;
   var autoRefreshTimer = null;
+  var drawRefreshTimer = null;
+  var drawRefreshTriggered = false;
   var autoRefreshStorageKey = "queue-challenge-admin-auto-refresh:" + challengeId;
 
   function currentCounterValues() {
@@ -131,6 +133,28 @@
 
   function tickCounters() {
     renderCounters();
+    if (!liveCounters.automatic || refreshInProgress) return;
+
+    var current = currentCounterValues();
+    if (current.nextDrawSeconds > 0) {
+      drawRefreshTriggered = false;
+      return;
+    }
+    if (drawRefreshTriggered) return;
+
+    drawRefreshTriggered = true;
+    refresh().then(function (succeeded) {
+      if (succeeded || !liveCounters.automatic) return;
+      // The scheduler can be a few seconds behind the visual countdown.
+      // Retry until the backend reports the next round/countdown.
+      if (currentCounterValues().nextDrawSeconds <= 0) {
+        drawRefreshTimer = window.setTimeout(function () {
+          drawRefreshTimer = null;
+          drawRefreshTriggered = false;
+          tickCounters();
+        }, 5000);
+      }
+    });
   }
 
   function readAutoRefreshPreference() {
@@ -205,6 +229,17 @@
     liveCounters.automatic = challenge.queue_mode === "automatic";
     liveCounters.nextDrawSeconds = Math.max(0, Number(challenge.next_draw_in_seconds) || 0);
     liveCounters.syncedAt = Date.now();
+    if (drawRefreshTimer !== null) {
+      window.clearTimeout(drawRefreshTimer);
+      drawRefreshTimer = null;
+    }
+    // A positive countdown means a new draw has been registered. Re-arm the
+    // zero-crossing trigger for the next automatic round.
+    if (!liveCounters.automatic || liveCounters.nextDrawSeconds > 0) {
+      drawRefreshTriggered = false;
+    } else {
+      drawRefreshTriggered = true;
+    }
     renderCounters();
 
     var mode = document.getElementById("queue-mode");
