@@ -246,7 +246,9 @@
         return "<tr><td>" + identity + '</td><td>' + team + '</td><td>' +
           escapeHtml(entry.round_number || "—") + '</td><td>' + escapeHtml(timeLabel(entry.selected_at)) +
           '</td><td class="queue-row-actions">' +
-          '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + entry.id + '">Send flag to team</button>' +
+          (entry.team_id
+            ? '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + entry.id + '">Send flag to team</button>'
+            : '<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="This participant is not associated with a team">No team</button>') +
           '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + entry.id + '">Remove from queue</button>' +
           '</td></tr>';
       }
