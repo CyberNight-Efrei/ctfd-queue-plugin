@@ -193,7 +193,6 @@ CTFd._internal.challenge.submit = function (preview) {
     if (!currentStatus || currentStatus.state !== "waiting" ||
         !currentStatus.show_eta || liveEtaDeadlineMs === null) return;
     liveEtaSeconds = Math.max(0, Math.ceil((liveEtaDeadlineMs - Date.now()) / 1000));
-    writeEtaCache(currentStatus.position, currentStatus.round_number || 0);
     renderWaitingDetails();
   }
 
@@ -205,6 +204,7 @@ CTFd._internal.challenge.submit = function (preview) {
     var challengeIdElement = document.getElementById("queue-challenge-id");
     var challengeId = challengeIdElement ? parseInt(challengeIdElement.value, 10) : null;
     currentStatus = status;
+    if (challengeId) etaCacheKey = getEtaCacheKey(challengeId);
     if (status && status.state === "waiting" && challengeId) {
       setEtaFromStatus(status, challengeId);
     } else {
