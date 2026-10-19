@@ -18,6 +18,8 @@ CTFd._internal.challenge.submit = function (preview) {
   var currentStatus = null;
   var busy = false;
   var liveEtaSeconds = null;
+  var liveEtaDeadlineMs = null;
+  var etaCacheKey = null;
 
   var recentFailureLogs = {};
 
@@ -103,8 +105,80 @@ CTFd._internal.challenge.submit = function (preview) {
     return secs + "s";
   }
 
+  function getEtaCacheKey(challengeId) {
+    var userId = Number(window.init && window.init.userId);
+    return "queue-estimated-wait:" + challengeId + ":" +
+      (Number.isInteger(userId) && userId > 0 ? userId : "current-user");
+  }
+
+  function readEtaCache() {
+    if (!etaCacheKey) return null;
+    try {
+      var raw = window.localStorage.getItem(etaCacheKey);
+      if (!raw) return null;
+      var cached = JSON.parse(raw);
+      if (!cached || !Number.isFinite(Number(cached.deadlineMs))) return null;
+      return cached;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeEtaCache(position, roundNumber) {
+    if (!etaCacheKey || liveEtaDeadlineMs === null) return;
+    try {
+      window.localStorage.setItem(etaCacheKey, JSON.stringify({
+        deadlineMs: liveEtaDeadlineMs,
+        position: position,
+        roundNumber: roundNumber
+      }));
+    } catch (_) {
+      // Fall back to the in-memory deadline if browser storage is disabled.
+    }
+  }
+
+  function clearEtaCache() {
+    liveEtaSeconds = null;
+    liveEtaDeadlineMs = null;
+    if (etaCacheKey) {
+      try { window.localStorage.removeItem(etaCacheKey); } catch (_) {}
+    }
+  }
+
+  function setEtaFromStatus(status, challengeId) {
+    var numericEta = Number(status && status.estimated_wait_seconds);
+    if (!status || status.state !== "waiting" || !status.show_eta ||
+        status.estimated_wait_seconds === undefined ||
+        status.estimated_wait_seconds === null ||
+        !Number.isFinite(numericEta)) {
+      clearEtaCache();
+      return;
+    }
+
+    etaCacheKey = getEtaCacheKey(challengeId);
+    var position = Number(status.position) || 0;
+    var roundNumber = Number(status.round_number) || 0;
+    var now = Date.now();
+    var cached = readEtaCache();
+    if (cached &&
+        Number(cached.position) === position &&
+        Number(cached.roundNumber) === roundNumber) {
+      // Keep one absolute deadline across API polling and page reloads. This
+      // prevents manual mode's fixed server estimate from jumping back up.
+      liveEtaDeadlineMs = Number(cached.deadlineMs);
+    } else {
+      liveEtaDeadlineMs = now + Math.max(0, numericEta) * 1000;
+    }
+    liveEtaSeconds = Math.max(0, Math.ceil((liveEtaDeadlineMs - now) / 1000));
+    writeEtaCache(position, roundNumber);
+  }
+
   function renderWaitingDetails() {
-    if (!currentStatus || currentStatus.state !== "waiting") return;
+    var details = document.getElementById("queue-details");
+    if (!currentStatus || currentStatus.state !== "waiting") {
+      setText(details, "");
+      return;
+    }
     var parts = [];
     if (currentStatus.show_position && currentStatus.position) {
       parts.push("Position: " + currentStatus.position);
@@ -112,13 +186,14 @@ CTFd._internal.challenge.submit = function (preview) {
     if (currentStatus.show_eta && liveEtaSeconds !== null) {
       parts.push("Estimated wait: " + formatDuration(liveEtaSeconds));
     }
-    setText(document.getElementById("queue-details"), parts.join(" · "));
+    setText(details, parts.join(" · "));
   }
 
   function tickEstimatedWait() {
     if (!currentStatus || currentStatus.state !== "waiting" ||
-        !currentStatus.show_eta || liveEtaSeconds === null) return;
-    if (liveEtaSeconds > 0) liveEtaSeconds -= 1;
+        !currentStatus.show_eta || liveEtaDeadlineMs === null) return;
+    liveEtaSeconds = Math.max(0, Math.ceil((liveEtaDeadlineMs - Date.now()) / 1000));
+    writeEtaCache(currentStatus.position, currentStatus.round_number || 0);
     renderWaitingDetails();
   }
 
@@ -127,13 +202,14 @@ CTFd._internal.challenge.submit = function (preview) {
   }
 
   function render(status) {
+    var challengeIdElement = document.getElementById("queue-challenge-id");
+    var challengeId = challengeIdElement ? parseInt(challengeIdElement.value, 10) : null;
     currentStatus = status;
-    liveEtaSeconds = status && status.state === "waiting" && status.show_eta &&
-      status.estimated_wait_seconds !== undefined &&
-      status.estimated_wait_seconds !== null &&
-      Number.isFinite(Number(status.estimated_wait_seconds))
-      ? Math.max(0, Math.floor(Number(status.estimated_wait_seconds)))
-      : null;
+    if (status && status.state === "waiting" && challengeId) {
+      setEtaFromStatus(status, challengeId);
+    } else {
+      clearEtaCache();
+    }
     var panel = document.getElementById("queue-plugin-panel");
     var message = document.getElementById("queue-status-message");
     var details = document.getElementById("queue-details");
@@ -157,11 +233,11 @@ CTFd._internal.challenge.submit = function (preview) {
         renderWaitingDetails();
         break;
       case "selected":
-        action.textContent = "Selected, you may now participate";
-        action.classList.add("btn-success");
-        action.disabled = true;
+        action.textContent = "Leave queue";
+        action.classList.add("btn-danger");
+        action.disabled = status.can_leave === false;
         message.className = "alert alert-success mb-2";
-        setText(message, status.selected_message || "You have been selected! You may now attempt this challenge.");
+        setText(message, status.selected_message || "You have been selected! You may now participate in this challenge.");
         if (details && status.round_number) setText(details, "Selection round " + status.round_number);
         break;
       case "registered_by_teammate":
@@ -176,7 +252,7 @@ CTFd._internal.challenge.submit = function (preview) {
         action.classList.add("btn-secondary");
         action.disabled = true;
         message.className = "alert alert-info mb-2";
-        setText(message, "You have already completed this queue challenge.");
+        setText(message, "You have already completed this challenge.");
         break;
 
       case "needs_team":
@@ -246,8 +322,9 @@ CTFd._internal.challenge.submit = function (preview) {
     action.addEventListener("click", function () {
       if (busy || !currentStatus) return;
       var challengeId = parseInt(idElement.value, 10);
-      var shouldLeave = currentStatus.state === "waiting";
-      if (!shouldLeave && currentStatus.state !== "not_joined") return;
+      var shouldLeave = currentStatus.state === "waiting" || currentStatus.state === "selected";
+      if (shouldLeave && currentStatus.can_leave === false) return;
+      if (!shouldLeave && (currentStatus.state !== "not_joined" || currentStatus.can_join === false)) return;
       busy = true;
       action.disabled = true;
       var endpoint = "/api/v1/plugins/ctfd-queue/challenges/" + challengeId + "/" + (shouldLeave ? "leave" : "join");
