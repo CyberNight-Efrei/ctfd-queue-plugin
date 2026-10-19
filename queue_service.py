@@ -111,22 +111,25 @@ class QueueService:
             entry.position = index
 
     @staticmethod
-    def _notification_for(entry, title, content):
+    def _notification_for(entry, title, content, recipient_user_id=None):
         """Create a native CTFd notification and return its live-event payload."""
-        # Notify the specific registered participant, not every teammate. In
-        # team mode the queue slot is team-scoped but the selected player is not.
         challenge = getattr(entry, "challenge", None)
         challenge_name = (
             getattr(challenge, "name", None) or "Challenge {}".format(entry.challenge_id)
         )
-        # Keep the persisted/plain-text content usable by CTFd's notification
-        # center and fallback alert, while formatting the live popup's html.
-        plain_content = "{}\n{}".format(challenge_name, content)
-        html_content = "<strong>{}</strong><br>{}".format(
-            escape_html(challenge_name), escape_html(content)
+        recipient_user_id = (
+            entry.user_id if recipient_user_id is None else int(recipient_user_id)
+        )
+        # Place the challenge name inside the sentence and bold only that name
+        # in the live popup. Both the name and message are safely HTML-escaped.
+        plain_content = str(content).replace("{challenge_name}", challenge_name, 1)
+        escaped_content = escape_html(plain_content)
+        escaped_name = escape_html(challenge_name)
+        html_content = escaped_content.replace(
+            escaped_name, "<strong>{}</strong>".format(escaped_name), 1
         )
         notification = Notifications(
-            title=title, content=plain_content, user_id=entry.user_id
+            title=title, content=plain_content, user_id=recipient_user_id
         )
         db.session.add(notification)
         db.session.flush()
@@ -160,7 +163,7 @@ class QueueService:
                     if notification.date
                     else _utcnow().isoformat()
                 ),
-                "user_id": notification.user_id,
+                "user_id": recipient_user_id,
                 "team_id": notification.team_id,
                 "type": "alert",
                 "sound": True,
@@ -187,7 +190,7 @@ class QueueService:
             QueueService._notification_for(
                 head,
                 "You are next in the queue",
-                "You are currently first in the queue. Please be ready for the next draw.",
+                "You are currently first in the queue for {challenge_name}. Please be ready for the next draw.",
             )
         )
 
@@ -266,7 +269,7 @@ class QueueService:
             challenge_id=challenge.id, account_key=account_key
         ).first()
 
-        if row is None or row.state == "left":
+        if row is None or row.state in ("left", "completed"):
             return {
                 "state": "not_joined",
                 "can_join": True,
@@ -280,7 +283,7 @@ class QueueService:
                 "selected_message": challenge.selected_message or "",
             }
 
-        # Eviction only ends the current round; it does not prevent rejoining.
+        # Eviction only ends the current round; an unsolved scoring account may rejoin.
         if row.state == "evicted":
             return {
                 **common_status,
@@ -381,10 +384,6 @@ class QueueService:
             if row and row.state in ("waiting", "selected"):
                 db.session.rollback()
                 return QueueService.user_status(challenge.id, user, team)
-            if row and row.state == "completed":
-                db.session.rollback()
-                raise QueueError("You have already completed this challenge.")
-
             waiters = QueueService.waiting_entries(challenge.id)
             position = len(waiters) + 1
             now = _utcnow()
@@ -450,6 +449,8 @@ class QueueService:
         events = []
         try:
             challenge = QueueService.get_challenge(challenge_id, lock=True)
+            if QueueService.has_solved_challenge(challenge, user):
+                raise QueueError("You or your team have already solved this challenge.")
             account_key = QueueService.account_key(user, team)
             row = QueueEntry.query.filter_by(
                 challenge_id=challenge.id, account_key=account_key
@@ -458,8 +459,6 @@ class QueueService:
                 raise QueueError("You are not in this queue.")
             if row.account_key.startswith("team:") and row.user_id != user.id:
                 raise QueueError("Another teammate registered this team; only that player can leave the queue.")
-            if row.state == "completed":
-                raise QueueError("You have already completed this challenge.")
             row.state = "left"
             row.left_at = _utcnow()
             QueueService._resequence(challenge.id)
@@ -564,7 +563,7 @@ class QueueService:
                         QueueService._notification_for(
                             entry,
                             "You have been selected!",
-                            "You have been selected for this queue round.",
+                            "You have been selected for {challenge_name}!",
                         )
                     )
             QueueService._resequence(challenge.id)
@@ -688,9 +687,6 @@ class QueueService:
             ).first()
             if row and row.state in ("waiting", "selected"):
                 raise QueueError("This user or their team is already in the queue.")
-            if row and row.state == "completed":
-                raise QueueError("This user or team has already completed the challenge.")
-
             position = len(QueueService.waiting_entries(challenge.id)) + 1
             now = _utcnow()
             if row is None:
@@ -743,6 +739,73 @@ class QueueService:
             raise
         _publish_notifications(events)
         return QueueService.admin_state(challenge_id)
+
+
+    @staticmethod
+    def notify_flag_to_selected_team(entry_id, flag_content):
+        """Send a challenge flag only to the selected participant's team."""
+        events = []
+        try:
+            entry = QueueEntry.query.filter_by(id=entry_id).with_for_update().first()
+            if entry is None:
+                raise QueueError("Queue entry not found.")
+            if entry.state != "selected":
+                raise QueueError("The participant must be currently selected to notify the flag.")
+
+            challenge = QueueService.get_challenge(entry.challenge_id, lock=True)
+            if QueueService.has_solved_challenge(challenge, entry.user):
+                raise QueueError("The selected player's team has already solved this challenge.")
+
+            if entry.team_id is not None:
+                recipients = [
+                    user_id
+                    for (user_id,) in Users.query.with_entities(Users.id)
+                    .filter_by(team_id=entry.team_id)
+                    .order_by(Users.id.asc())
+                    .all()
+                ]
+                # Retain the selected player if a CTFd deployment's user query
+                # does not reflect its team relationship in the expected way.
+                if entry.user_id not in recipients:
+                    recipients.append(entry.user_id)
+            else:
+                recipients = [entry.user_id]
+
+            recipients = sorted(set(recipients))
+            if not recipients:
+                raise QueueError("No eligible team members were found for this notification.")
+
+            for recipient_id in recipients:
+                events.append(
+                    QueueService._notification_for(
+                        entry,
+                        "Challenge flag",
+                        "The flag for {challenge_name} is: {}".format(flag_content),
+                        recipient_user_id=recipient_id,
+                    )
+                )
+
+            challenge_name = challenge.name
+            team_id = entry.team_id
+            db.session.commit()
+            log.info(
+                "Administrator notified selected participant's team of challenge flag "
+                "challenge_id=%s entry_id=%s team_id=%s recipient_count=%s",
+                challenge.id,
+                entry_id,
+                team_id,
+                len(recipients),
+            )
+        except Exception:
+            db.session.rollback()
+            raise
+
+        _publish_notifications(events)
+        return {
+            "recipient_count": len(recipients),
+            "team_id": team_id,
+            "challenge_name": challenge_name,
+        }
 
     @staticmethod
     def move_entry(entry_id, direction):
