@@ -1,0 +1,150 @@
+{% extends "admin/base.html" %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261020-admin-dropdown-v1">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid queue-admin-page" id="queue-admin-detail" data-challenge-id="{{ challenge.id }}"
+     data-elapsed-seconds="{{ state.challenge.elapsed_seconds or 0 }}"
+     data-has-drawn="{{ 'true' if state.challenge.has_drawn else 'false' }}"
+     data-next-draw-in-seconds="{{ state.challenge.next_draw_in_seconds or 0 }}"
+     data-queue-mode="{{ challenge.queue_mode }}" data-interval-seconds="{{ challenge.interval_seconds }}">
+  <div class="queue-page-header">
+    <div>
+      <a href="{{ url_for('queue_challenge.admin_index') }}" class="queue-back-link">← All queues</a>
+      <p class="queue-eyebrow">Challenge ID {{ challenge.id }}</p>
+      <h1>{{ challenge.name }}</h1>
+      <p class="text-muted mb-0">Manage the waiting queue and advance rounds.</p>
+    </div>
+    <div class="queue-header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.challenges_detail', challenge_id=challenge.id) }}">Edit challenge</a>
+      <button class="btn btn-outline-secondary" type="button" id="queue-copy-flag">
+        <span aria-hidden="true">▣</span> Copy flag
+      </button>
+      <button class="btn btn-outline-primary" type="button" id="queue-refresh">
+        <span aria-hidden="true">↻</span> Refresh
+      </button>
+      <label class="queue-auto-refresh-toggle" for="queue-auto-refresh">
+        <input type="checkbox" id="queue-auto-refresh">
+        <span>Auto refresh every 2 min</span>
+      </label>
+      <button class="btn btn-primary" type="button" id="queue-advance">
+        <span aria-hidden="true">▶</span> Advance queue
+      </button>
+    </div>
+  </div>
+
+  <div class="queue-refresh-meta"><span id="queue-refresh-status" aria-live="polite">Not refreshed yet</span></div>
+  <div id="queue-admin-feedback" class="alert" role="status" style="display:none;"></div>
+
+  <div class="queue-stat-grid">
+    <div class="queue-stat-card"><span class="queue-stat-label">Waiting</span><strong id="queue-waiting-count">{{ state.waiting|length }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Currently selected</span><strong id="queue-selected-count">{{ state.selected|length }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Round</span><strong id="queue-round-number">{{ state.challenge.round_number }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Time since last draw</span><strong id="queue-elapsed">{{ ("%02d:%02d:%02d"|format((state.challenge.elapsed_seconds // 3600), ((state.challenge.elapsed_seconds % 3600) // 60), (state.challenge.elapsed_seconds % 60))) if state.challenge.has_drawn else "No draw yet" }}</strong></div>
+  </div>
+
+  <div class="queue-settings-strip">
+    <span><strong>Mode</strong> <span id="queue-mode" class="queue-badge queue-mode-badge {{ 'queue-mode-automatic' if challenge.queue_mode == 'automatic' else 'queue-mode-manual' }}">{{ 'Automatic' if challenge.queue_mode == 'automatic' else 'Manual' }}</span></span>
+    <span><strong>Batch size</strong> <span id="queue-batch-size">{{ challenge.batch_size }}</span></span>
+    <span><strong>Configured interval</strong> <span id="queue-interval">{{ challenge.interval_seconds }} seconds</span></span>
+    <span><strong>Next automatic draw</strong> <span id="queue-next-draw">{{ ("%02d:%02d:%02d"|format((state.challenge.next_draw_in_seconds // 3600), ((state.challenge.next_draw_in_seconds % 3600) // 60), (state.challenge.next_draw_in_seconds % 60))) if challenge.queue_mode == 'automatic' else "Manual" }}</span></span>
+  </div>
+  <p class="queue-admin-hint">The interval is an estimate only in manual mode. Advancing a queue removes participants still selected from the previous round, then selects the next configured batch. Participants removed from the queue can rejoin until their scoring account solves the challenge.</p>
+
+  <div class="queue-panel">
+    <div class="queue-panel-header">
+      <div><h2>Selected participants</h2><p>Participants selected for the current round.</p></div>
+      <span class="queue-badge queue-badge-selected">Selected</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table queue-table">
+        <thead><tr><th>Participant</th><th>Team</th><th>Round</th><th>Selected at</th><th></th></tr></thead>
+        <tbody id="queue-selected-rows">
+        {% for entry in state.selected %}
+          <tr>
+            <td>{{ entry.username }} <span class="text-muted small">#{{ entry.user_id }}</span></td>
+            <td>{{ entry.team_name or '—' }}</td>
+            <td>{{ entry.round_number or '—' }}</td>
+            <td>{{ entry.selected_at or '—' }}</td>
+            <td class="queue-row-actions">
+              {% if entry.team_id %}
+              <button class="btn btn-sm btn-outline-primary" type="button" data-action="notify-flag" data-entry-id="{{ entry.id }}">Send flag to team</button>
+              {% else %}
+              <button class="btn btn-sm btn-outline-secondary" type="button" disabled title="This participant is not associated with a team">No team</button>
+              {% endif %}
+              <button class="btn btn-sm btn-outline-danger" type="button" data-action="remove" data-entry-id="{{ entry.id }}">Remove from queue</button>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="queue-empty-row">No participants are currently selected.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="queue-panel">
+    <div class="queue-panel-header">
+      <div><h2>Waiting queue</h2><p>Use the arrows to change the order. The top participant is next in line.</p></div>
+      <span class="queue-badge queue-badge-manual">FIFO queue</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table queue-table">
+        <thead><tr><th>Position</th><th>Participant</th><th>Team</th><th>Joined at</th><th>Reorder / remove</th></tr></thead>
+        <tbody id="queue-waiting-rows">
+        {% for entry in state.waiting %}
+          <tr>
+            <td><span class="queue-position">{{ entry.position }}</span>{% if loop.first %} <span class="queue-badge queue-badge-auto ml-2">Next</span>{% endif %}</td>
+            <td>{{ entry.username }} <span class="text-muted small">#{{ entry.user_id }}</span></td>
+            <td>{{ entry.team_name or '—' }}</td>
+            <td>{{ entry.joined_at or '—' }}</td>
+            <td class="queue-row-actions">
+              <button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="{{ entry.id }}" aria-label="Move up">↑</button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="move-down" data-entry-id="{{ entry.id }}" aria-label="Move down">↓</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="{{ entry.id }}">Remove</button>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="queue-empty-row">The waiting queue is empty.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="queue-panel queue-add-participant-panel">
+    <div class="queue-panel-header">
+      <div><h2>Add a participant</h2><p>Enter their CTFd username. In team mode, only one signup per team is permitted.</p></div>
+    </div>
+    <form id="queue-add-user-form" class="queue-add-form">
+      <div class="form-group">
+        <label for="queue-add-lookup-mode">Find participant by</label>
+        <select class="form-control mb-2" id="queue-add-lookup-mode" name="lookup_mode">
+          <option value="username">Username</option>
+          <option value="id">User ID</option>
+        </select>
+        <div id="queue-add-username-wrap">
+          <label for="queue-add-username">CTFd username</label>
+          <input class="form-control" id="queue-add-username" name="username" type="text"
+                 autocomplete="off" required aria-autocomplete="list"
+                 aria-controls="queue-user-suggestions" aria-expanded="false"
+                 placeholder="Start typing a username…">
+          <div id="queue-user-suggestions" class="queue-user-suggestions" role="listbox" hidden></div>
+          <small class="text-muted">Start typing to see matching usernames.</small>
+        </div>
+        <div id="queue-add-user-id-wrap" hidden>
+          <label for="queue-add-user-id">CTFd user ID</label>
+          <input class="form-control" id="queue-add-user-id" name="user_id" type="number" min="1" disabled placeholder="e.g. 42">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-outline-primary">Add to queue</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261019-admin-v13"></script>
+{% endblock %}

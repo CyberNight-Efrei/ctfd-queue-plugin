@@ -1,0 +1,135 @@
+{% extends "admin/base.html" %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-admin-list-v3">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid queue-admin-page" id="queue-admin-list">
+  <div class="queue-page-header">
+    <div>
+      <p class="queue-eyebrow">CTFd plugin</p>
+      <h1>Challenge queues</h1>
+      <p class="text-muted mb-0">Manage manual draws, review waiting participants, and monitor automatic rounds.</p>
+    </div>
+    <div class="queue-header-actions">
+      <button class="btn btn-primary" type="button" id="queue-advance-selected" disabled>
+        Advance selected queues (<span id="queue-selected-challenge-count">0</span>)
+      </button>
+    </div>
+  </div>
+
+  <div id="queue-list-feedback" class="alert" role="status" style="display:none;"></div>
+
+  <div class="queue-stat-grid">
+    <div class="queue-stat-card"><span class="queue-stat-label">Queue challenges</span><strong id="queue-total-challenges">{{ queue_challenges|length }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Waiting participants</span><strong id="queue-total-waiting">{{ queue_challenges|sum(attribute='waiting_count') }}</strong></div>
+    <div class="queue-stat-card"><span class="queue-stat-label">Selected participants</span><strong id="queue-total-selected">{{ queue_challenges|sum(attribute='selected_count') }}</strong></div>
+  </div>
+
+  <div class="queue-section-heading">
+    <div>
+      <h2>Challenges</h2>
+      <p class="text-muted">Advance one queue at a time or select several challenges for a batch operation.</p>
+    </div>
+  </div>
+
+  {% if queue_challenges %}
+  <div class="queue-filter-panel">
+    <div class="queue-filter-field queue-filter-name">
+      <label for="queue-filter-name">Challenge name</label>
+      <input id="queue-filter-name" class="form-control" type="search" placeholder="Search by name…" autocomplete="off">
+    </div>
+    <div class="queue-filter-field">
+      <label for="queue-filter-visibility">Visibility</label>
+      <select id="queue-filter-visibility" class="form-control">
+        <option value="all">All visibilities</option>
+        <option value="visible">Visible</option>
+        <option value="hidden">Hidden</option>
+      </select>
+    </div>
+    <div class="queue-filter-field">
+      <label for="queue-filter-mode">Progression mode</label>
+      <select id="queue-filter-mode" class="form-control">
+        <option value="all">All modes</option>
+        <option value="automatic">Automatic</option>
+        <option value="manual">Manual</option>
+      </select>
+    </div>
+    <button type="button" id="queue-filter-reset" class="btn btn-outline-secondary">Reset filters</button>
+  </div>
+
+  <div class="queue-bulk-toolbar">
+    <label class="queue-select-visible">
+      <input type="checkbox" id="queue-select-visible">
+      Select visible challenges
+    </label>
+    <span id="queue-filter-result-count" class="text-muted small">{{ queue_challenges|length }} challenges</span>
+  </div>
+
+  <p class="queue-mobile-scroll-hint"><span aria-hidden="true">↔</span> Swipe horizontally to see all columns. The actions column stays visible.</p>
+  <div class="table-responsive queue-table-wrap" role="region" aria-label="Challenge queues table" tabindex="0">
+    <table class="table queue-table queue-list-table">
+      <thead>
+        <tr>
+          <th class="queue-checkbox-cell"><span class="sr-only">Select</span></th>
+          <th>Challenge</th>
+          <th>Visibility</th>
+          <th>Progression</th>
+          <th>Batch size</th>
+          <th>Waiting</th>
+          <th>Selected</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="queue-challenge-rows">
+      {% for item in queue_challenges %}
+        {% set visibility = item.challenge.state or 'hidden' %}
+        <tr class="queue-challenge-row"
+            data-challenge-id="{{ item.challenge.id }}"
+            data-challenge-name="{{ item.challenge.name|lower }}"
+            data-visibility="{{ visibility }}"
+            data-mode="{{ item.challenge.queue_mode }}">
+          <td class="queue-checkbox-cell" data-label="Select">
+            <input class="queue-challenge-checkbox" type="checkbox" value="{{ item.challenge.id }}"
+                   aria-label="Select {{ item.challenge.name|e }}">
+          </td>
+          <td data-label="Challenge">
+            <div class="queue-challenge-title">{{ item.challenge.name }}</div>
+            <div class="text-muted small">ID {{ item.challenge.id }} · {{ item.challenge.category }}</div>
+          </td>
+          <td data-label="Visibility">
+            <span class="queue-badge queue-visibility-badge {{ 'queue-visibility-visible' if visibility == 'visible' else 'queue-visibility-hidden' if visibility == 'hidden' else 'queue-visibility-other' }}">
+              {{ visibility|capitalize }}
+            </span>
+          </td>
+          <td data-label="Progression"><span class="queue-badge {{ 'queue-badge-auto' if item.challenge.queue_mode == 'automatic' else 'queue-badge-manual' }}">{{ 'Automatic' if item.challenge.queue_mode == 'automatic' else 'Manual' }}</span></td>
+          <td data-label="Batch size">{{ item.challenge.batch_size }} per draw</td>
+          <td data-label="Waiting"><span class="queue-count queue-waiting-count">{{ item.waiting_count }}</span></td>
+          <td data-label="Selected"><span class="queue-count queue-count-selected queue-selected-count">{{ item.selected_count }}</span></td>
+          <td class="queue-list-actions" data-label="Actions">
+            <button class="btn btn-sm btn-primary" type="button" data-action="advance" data-challenge-id="{{ item.challenge.id }}">Advance queue</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-action="copy-flag" data-challenge-id="{{ item.challenge.id }}">Copy flag</button>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage queue <span aria-hidden="true">→</span></a>
+          </td>
+        </tr>
+      {% endfor %}
+      <tr id="queue-no-filter-results" hidden>
+        <td colspan="8" class="queue-empty-row">No challenges match the selected filters.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="queue-empty-state">
+    <h3>No queue challenges yet</h3>
+    <p>Create a challenge and select <strong>Queue Challenge</strong> as its type. The new type keeps CTFd's standard description, attribution, flags, and scoring settings.</p>
+    <a class="btn btn-primary" href="{{ url_for('admin.challenges_listing') }}">Open challenges</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin-list.js') }}?v=20261019-admin-list-v3"></script>
+{% endblock %}

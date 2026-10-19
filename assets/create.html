@@ -1,0 +1,82 @@
+{% extends "admin/challenges/create.html" %}
+
+{% block value %}
+<div class="form-group" id="queue-static-value-panel">
+  <label for="queue-static-value">Value<br>
+    <small class="form-text text-muted">Points awarded using static scoring.</small>
+  </label>
+  <input type="number" class="form-control" id="queue-static-value" name="value" placeholder="Enter value" required>
+</div>
+
+<div class="form-group">
+  <label for="queue-scoring-function">Scoring function</label>
+  <select class="form-control custom-select" id="queue-scoring-function" name="function">
+    <option value="static" selected>Static</option>
+    <option value="linear">Linear decay</option>
+    <option value="logarithmic">Logarithmic decay</option>
+  </select>
+  <small class="form-text text-muted">
+    Static keeps the configured value. Linear and logarithmic use the same CTFd formulas as native dynamic challenges.
+  </small>
+</div>
+
+<div id="queue-dynamic-value-panel" hidden>
+  <div class="form-group">
+    <label for="queue-initial">Initial value</label>
+    <input type="number" class="form-control" id="queue-initial" name="initial" min="0" value="100" disabled>
+  </div>
+  <div class="form-group">
+    <label for="queue-decay">Decay</label>
+    <input type="number" class="form-control" id="queue-decay" name="decay" min="1" value="10" disabled>
+  </div>
+  <div class="form-group">
+    <label for="queue-minimum">Minimum value</label>
+    <input type="number" class="form-control" id="queue-minimum" name="minimum" min="0" value="10" disabled>
+  </div>
+</div>
+
+<hr>
+<h5>Queue settings</h5>
+<p class="text-muted">Queue selection controls the order of queue rounds. A selected participant is removed from this queue at the next iteration. In team mode, the queue entry is shared by the team and CTFd's configured team-solving rules apply.</p>
+
+<div class="form-group">
+  <label for="queue-mode">Queue progression</label>
+  <select class="form-control custom-select" id="queue-mode" name="queue_mode">
+    <option value="manual" selected>Manual — an administrator advances the queue</option>
+    <option value="automatic">Automatic — advance after the configured interval</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="queue-batch-size">Participants selected per round</label>
+  <input class="form-control" id="queue-batch-size" type="number" name="batch_size" min="1" max="1000" value="1" required>
+  <small class="form-text text-muted">The first waiting participants are selected at each draw.</small>
+</div>
+
+<div class="form-group">
+  <label for="queue-interval">Interval between rounds (seconds)</label>
+  <input class="form-control" id="queue-interval" type="number" name="interval_seconds" min="1" max="86400" value="900" required>
+  <small class="form-text text-muted">In automatic mode this is the draw interval. In manual mode it is used only to estimate waiting time.</small>
+</div>
+
+<div class="form-check mb-2">
+  <input class="form-check-input" type="checkbox" id="queue-show-position" data-queue-bool="show_position" checked>
+  <input type="hidden" name="show_position" value="true">
+  <label class="form-check-label" for="queue-show-position">Show the participant's position in the queue</label>
+</div>
+<div class="form-check mb-3">
+  <input class="form-check-input" type="checkbox" id="queue-show-eta" data-queue-bool="show_eta" checked>
+  <input type="hidden" name="show_eta" value="true">
+  <label class="form-check-label" for="queue-show-eta">Show an estimated waiting time</label>
+</div>
+
+<div class="form-group">
+  <label for="queue-selected-message">Message displayed after selection</label>
+  <textarea class="form-control" id="queue-selected-message" name="selected_message" rows="3">You have been selected! You may now attempt this challenge.</textarea>
+  <small class="form-text text-muted">Displayed to the participant once selected. This is plain text.</small>
+</div>
+{% endblock %}
+
+{% block type %}
+<input type="hidden" value="queue" name="type" id="chaltype">
+{% endblock %}

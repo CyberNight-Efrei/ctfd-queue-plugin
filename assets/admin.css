@@ -1,0 +1,612 @@
+.queue-admin-page {
+  max-width: 1500px;
+  margin: 28px auto 48px;
+  color: var(--bs-body-color, #263238);
+}
+.queue-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(127, 140, 141, .25);
+}
+.queue-page-header h1 { margin: 0 0 8px; font-weight: 700; letter-spacing: -.025em; }
+.queue-eyebrow {
+  margin: 0 0 6px;
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.queue-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.queue-auto-refresh-toggle {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
+  color: var(--bs-body-color, #334155); font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.queue-auto-refresh-toggle input { width: 16px; height: 16px; margin: 0; accent-color: #2563eb; }
+.queue-refresh-meta { display: flex; justify-content: flex-end; margin: -14px 2px 16px; color: #64748b; font-size: 11px; }
+.queue-mode-badge { margin-left: 6px; padding: 6px 11px; font-size: 12px; }
+.queue-mode-automatic { color: #075985; background: #dbeafe; border: 1px solid #93c5fd; }
+.queue-mode-manual { color: #854d0e; background: #fef3c7; border: 1px solid #fcd34d; }
+.queue-back-link { display: inline-block; margin-bottom: 14px; color: #2563eb; font-weight: 600; }
+.queue-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 25px;
+}
+.queue-stat-card, .queue-panel, .queue-table-wrap, .queue-empty-state {
+  border: 1px solid rgba(127, 140, 141, .23);
+  border-radius: 12px;
+  background: var(--bs-card-bg, #fff);
+  box-shadow: 0 3px 12px rgba(18, 38, 63, .035);
+}
+.queue-stat-card { padding: 18px 20px; }
+.queue-stat-label { display: block; color: #64748b; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+.queue-stat-card strong { font-size: 28px; line-height: 1.1; font-weight: 750; }
+.queue-section-heading { display: flex; align-items: end; justify-content: space-between; margin: 28px 0 14px; }
+.queue-section-heading h2, .queue-panel-header h2 { font-size: 17px; font-weight: 750; margin: 0 0 5px; }
+.queue-section-heading p, .queue-panel-header p { margin: 0; color: #64748b; font-size: 13px; }
+.queue-table-wrap { overflow: hidden; }
+.queue-table { margin-bottom: 0; vertical-align: middle; }
+.queue-table thead th {
+  background: rgba(100, 116, 139, .07);
+  border-top: 0;
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: .05em;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.queue-table td { padding-top: 13px; padding-bottom: 13px; }
+.queue-table tbody tr:last-child td { border-bottom: 0; }
+.queue-challenge-title { font-weight: 700; }
+.queue-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.queue-badge-auto { color: #075985; background: #e0f2fe; }
+.queue-badge-manual { color: #475569; background: #f1f5f9; }
+.queue-badge-selected { color: #166534; background: #dcfce7; }
+.queue-count {
+  display: inline-flex; min-width: 28px; height: 28px; padding: 0 7px;
+  align-items: center; justify-content: center; border-radius: 8px;
+  background: #f1f5f9; color: #334155; font-weight: 750;
+}
+.queue-count-selected { background: #dcfce7; color: #166534; }
+.queue-empty-state { padding: 36px 24px; text-align: center; }
+.queue-empty-state h3 { font-size: 19px; font-weight: 750; }
+.queue-empty-state p { color: #64748b; margin: 10px auto 18px; max-width: 680px; }
+.queue-settings-strip {
+  display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center;
+  padding: 14px 18px; border: 1px solid rgba(127, 140, 141, .23);
+  border-radius: 10px; background: rgba(100, 116, 139, .055); font-size: 13px;
+}
+.queue-settings-strip strong { display: block; margin-bottom: 3px; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.queue-admin-hint { margin: 12px 1px 24px; color: #64748b; font-size: 12px; line-height: 1.6; }
+.queue-panel { margin-bottom: 20px; overflow: hidden; }
+.queue-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid rgba(127, 140, 141, .17); }
+.queue-panel .table-responsive { margin: 0; }
+.queue-empty-row { padding: 24px !important; text-align: center; color: #64748b; }
+.queue-position {
+  display: inline-flex; width: 29px; height: 29px; align-items: center; justify-content: center;
+  border-radius: 8px; background: #eff6ff; color: #1d4ed8; font-weight: 800;
+}
+.queue-row-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 190px; }
+.queue-add-form { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; padding: 20px; }
+.queue-add-form .form-group { margin: 0; width: min(340px, 100%); }
+.queue-add-form label { font-size: 12px; font-weight: 750; color: #64748b; }
+@media (max-width: 760px) {
+  .queue-page-header { align-items: flex-start; flex-direction: column; }
+  .queue-header-actions { width: 100%; }
+  .queue-settings-strip { align-items: flex-start; flex-direction: column; }
+  .queue-panel-header { align-items: flex-start; }
+}
+
+
+/* Queue challenge listing filters and batch actions */
+.queue-filter-panel {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 16px;
+  border: 1px solid rgba(127, 140, 141, .23);
+  border-radius: 12px;
+  background: var(--bs-card-bg, #fff);
+}
+.queue-filter-field { min-width: 170px; }
+.queue-filter-name { flex: 1 1 260px; }
+.queue-filter-field label {
+  display: block;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+}
+.queue-filter-panel .form-control { min-height: 38px; }
+.queue-bulk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 10px;
+}
+.queue-select-visible {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.queue-checkbox-cell { width: 38px; text-align: center; }
+.queue-checkbox-cell input { width: 16px; height: 16px; accent-color: #2563eb; }
+.queue-list-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 255px;
+}
+.queue-visibility-badge { border: 1px solid transparent; }
+.queue-visibility-visible { color: #166534; background: #dcfce7; border-color: #86efac; }
+.queue-visibility-hidden { color: #475569; background: #f1f5f9; border-color: #cbd5e1; }
+.queue-visibility-other { color: #854d0e; background: #fef3c7; border-color: #fcd34d; }
+.queue-challenge-row[hidden],
+#queue-no-filter-results[hidden] { display: none !important; }
+@media (max-width: 760px) {
+  .queue-filter-panel { align-items: stretch; flex-direction: column; }
+  .queue-filter-field, .queue-filter-name { width: 100%; min-width: 0; }
+  .queue-bulk-toolbar { align-items: flex-start; flex-direction: column; }
+}
+
+
+/* Responsive admin queue pages: preserve access to wide tables on touch screens. */
+.queue-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+.queue-table-wrap:focus-visible,
+.queue-panel .table-responsive:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.queue-list-table {
+  min-width: 980px;
+}
+.queue-list-table th:last-child,
+.queue-list-table td.queue-list-actions {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--bs-card-bg, #fff);
+  box-shadow: -8px 0 12px -10px rgba(15, 23, 42, .5);
+}
+.queue-list-table thead th:last-child {
+  z-index: 3;
+  background: #f1f5f9;
+}
+.queue-list-table td.queue-list-actions {
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  min-width: 255px;
+}
+.queue-mobile-scroll-hint {
+  display: none;
+  margin: 0 0 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+.queue-mobile-scroll-hint span {
+  display: inline-block;
+  margin-right: 5px;
+  font-weight: 800;
+}
+.queue-admin-page .btn {
+  min-height: 36px;
+}
+.queue-admin-page .form-control,
+.queue-admin-page select.form-control,
+.queue-admin-page input.form-control {
+  min-height: 40px;
+}
+.queue-add-form .form-group {
+  min-width: 0;
+}
+.queue-add-form .form-control {
+  max-width: 100%;
+}
+.queue-panel .table-responsive {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.queue-panel .queue-table {
+  min-width: 650px;
+}
+.queue-row-actions {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .queue-admin-page {
+    width: 100%;
+    margin: 14px auto 28px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .queue-page-header {
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+  .queue-page-header h1 {
+    font-size: clamp(24px, 7vw, 32px);
+    overflow-wrap: anywhere;
+  }
+  .queue-page-header > div:first-child {
+    min-width: 0;
+    width: 100%;
+  }
+  .queue-header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 8px;
+  }
+  .queue-header-actions > .btn,
+  .queue-header-actions > .queue-auto-refresh-toggle {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+  }
+  .queue-header-actions > .queue-auto-refresh-toggle {
+    padding: 8px 5px;
+    border: 1px solid rgba(127, 140, 141, .23);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .queue-header-actions > .queue-auto-refresh-toggle span {
+    overflow-wrap: anywhere;
+  }
+  .queue-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .queue-stat-card {
+    min-width: 0;
+    padding: 13px 12px;
+    border-radius: 10px;
+  }
+  .queue-stat-label {
+    font-size: 11px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .queue-stat-card strong {
+    font-size: clamp(22px, 6vw, 28px);
+    overflow-wrap: anywhere;
+  }
+  .queue-section-heading {
+    margin: 20px 0 12px;
+  }
+  .queue-section-heading h2,
+  .queue-panel-header h2 {
+    font-size: 16px;
+  }
+  .queue-filter-panel {
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+  }
+  .queue-filter-panel .btn {
+    width: 100%;
+  }
+  .queue-bulk-toolbar {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .queue-select-visible {
+    align-items: flex-start;
+    line-height: 1.4;
+  }
+  .queue-select-visible input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+  .queue-mobile-scroll-hint {
+    display: block;
+  }
+  .queue-table-wrap {
+    border-radius: 10px;
+    box-shadow: none;
+  }
+  .queue-list-table {
+    min-width: 900px;
+  }
+  .queue-list-table th,
+  .queue-list-table td {
+    padding: 11px 10px;
+  }
+  .queue-list-table td.queue-list-actions {
+    min-width: 245px;
+    padding-right: 12px;
+  }
+  .queue-panel {
+    margin-bottom: 14px;
+    border-radius: 10px;
+  }
+  .queue-panel-header {
+    padding: 14px 12px;
+    gap: 8px;
+  }
+  .queue-panel-header > div {
+    min-width: 0;
+  }
+  .queue-settings-strip {
+    gap: 12px;
+    padding: 13px;
+    border-radius: 10px;
+  }
+  .queue-settings-strip > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .queue-mode-badge {
+    margin-left: 0;
+  }
+  .queue-admin-hint {
+    margin-bottom: 16px;
+  }
+  .queue-add-form {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 12px;
+  }
+  .queue-add-form .form-group {
+    width: 100%;
+  }
+  .queue-add-form > button {
+    width: 100%;
+  }
+  .queue-empty-state {
+    padding: 25px 15px;
+  }
+}
+@media (max-width: 380px) {
+  .queue-admin-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .queue-header-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .queue-stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* On narrow screens, turn each queue row into a readable card instead of
+   pinning the Actions column over the other columns. Every field stays visible. */
+@media (max-width: 760px) {
+  .queue-table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .queue-list-table {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+    table-layout: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: transparent;
+  }
+  .queue-list-table thead {
+    display: none;
+  }
+  .queue-list-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .queue-list-table tbody tr.queue-challenge-row {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 12px;
+    overflow: hidden;
+    border: 1px solid rgba(127, 140, 141, .25);
+    border-radius: 12px;
+    background: var(--bs-card-bg, #fff);
+    box-shadow: 0 2px 8px rgba(18, 38, 63, .04);
+  }
+  .queue-list-table tbody tr.queue-challenge-row > td {
+    position: static !important;
+    display: grid;
+    grid-template-columns: minmax(84px, 0.7fr) minmax(0, 1.3fr);
+    align-items: start;
+    gap: 12px;
+    width: 100%;
+    min-width: 0 !important;
+    padding: 11px 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(127, 140, 141, .12);
+    background: transparent !important;
+    box-shadow: none !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .queue-list-table tbody tr.queue-challenge-row > td::before {
+    content: attr(data-label);
+    display: block;
+    min-width: 0;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.4;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .035em;
+  }
+  .queue-list-table tbody tr.queue-challenge-row > td.queue-checkbox-cell {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    background: rgba(100, 116, 139, .055) !important;
+  }
+  .queue-list-table tbody tr.queue-challenge-row > td.queue-checkbox-cell::before {
+    content: "Select challenge";
+    flex: 1 1 auto;
+  }
+  .queue-list-table .queue-checkbox-cell input {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  .queue-list-table .queue-challenge-title {
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .queue-list-table .queue-list-actions {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0 !important;
+    padding: 12px;
+    border-bottom: 0 !important;
+    background: rgba(100, 116, 139, .045) !important;
+  }
+  .queue-list-table tbody tr.queue-challenge-row > td.queue-list-actions::before {
+    content: "Actions";
+    width: 100%;
+    margin-bottom: 2px;
+  }
+  .queue-list-table .queue-list-actions > .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    min-height: 40px;
+    margin: 0;
+    white-space: normal;
+    text-align: center;
+  }
+  .queue-list-table tbody tr#queue-no-filter-results {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(127, 140, 141, .2);
+    border-radius: 10px;
+    background: var(--bs-card-bg, #fff);
+  }
+  .queue-list-table tbody tr#queue-no-filter-results > td {
+    display: block;
+    width: 100%;
+    padding: 18px 12px !important;
+    white-space: normal;
+  }
+  .queue-list-table tbody tr#queue-no-filter-results > td::before {
+    content: none;
+  }
+}
+@media (max-width: 380px) {
+  .queue-list-table tbody tr.queue-challenge-row > td:not(.queue-list-actions) {
+    grid-template-columns: minmax(72px, .65fr) minmax(0, 1.35fr);
+    gap: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .queue-list-table .queue-list-actions {
+    padding: 10px;
+  }
+}
+
+
+/* Queue challenge admin detail: visible autocomplete and elapsed-clock states */
+.queue-user-suggestions {
+  position: absolute;
+  z-index: 1050;
+  left: 0;
+  right: 0;
+  top: calc(100% + 3px);
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid rgba(100, 116, 139, .35);
+  border-radius: 8px;
+  background: var(--bs-card-bg, #fff);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+}
+.queue-user-suggestions[hidden] { display: none !important; }
+.queue-add-form #queue-add-username-wrap { position: relative; width: 100%; }
+.queue-user-suggestion-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(100, 116, 139, .12);
+  background: transparent;
+  color: var(--bs-body-color, #263238);
+  text-align: left;
+  cursor: pointer;
+}
+.queue-user-suggestion-option:last-child { border-bottom: 0; }
+.queue-user-suggestion-option:hover,
+.queue-user-suggestion-option:focus {
+  background: rgba(59, 130, 246, .1);
+  outline: none;
+}
+.queue-user-suggestion-option small { color: #64748b; white-space: nowrap; }
+#queue-elapsed.queue-time-warning { color: var(--bs-warning, #d97706) !important; }
+#queue-elapsed.queue-time-danger { color: var(--bs-danger, #dc2626) !important; }
+
+
+/* Let the username autocomplete escape the add-participant card instead of
+   being clipped by the shared queue-panel overflow rule. Keep it above nearby
+   panels and tables while the suggestion list is open. */
+.queue-panel.queue-add-participant-panel {
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+.queue-add-participant-panel .queue-add-form,
+.queue-add-participant-panel #queue-add-username-wrap {
+  position: relative;
+}
+.queue-add-participant-panel .queue-user-suggestions {
+  z-index: 1060;
+}
