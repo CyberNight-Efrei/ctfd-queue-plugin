@@ -27,6 +27,35 @@
     }
   }
 
+  function fetchRequest(path, options) {
+    var ctfd = window.CTFd;
+    if (ctfd && typeof ctfd.fetch === "function") {
+      return ctfd.fetch(path, options);
+    }
+
+    // Admin plugin scripts may execute before CTFd.js is defined. Fall back
+    // to native fetch while preserving CTFd's URL root and CSRF protection.
+    var requestPath = path;
+    var urlRoot = window.init && typeof window.init.urlRoot === "string"
+      ? window.init.urlRoot
+      : "";
+    if (path.charAt(0) === "/" && urlRoot) {
+      requestPath = urlRoot.replace(/\/+$/, "") + path;
+    }
+
+    var method = String(options.method || "GET").toUpperCase();
+    var safeMethod = method === "GET" || method === "HEAD" || method === "OPTIONS" || method === "TRACE";
+    var csrfNonce = window.init && window.init.csrfNonce;
+    if (!safeMethod && csrfNonce && options.headers &&
+        !options.headers["CSRF-Token"]) {
+      options.headers["CSRF-Token"] = csrfNonce;
+    }
+    if (typeof window.fetch !== "function") {
+      return Promise.reject(new Error("This browser does not support fetch()."));
+    }
+    return window.fetch(requestPath, options);
+  }
+
   function api(path, method, body) {
     var options = {
       method: method || "GET",
@@ -35,10 +64,7 @@
       headers: { Accept: "application/json", "Content-Type": "application/json" }
     };
     if (body !== undefined) options.body = JSON.stringify(body);
-    var fetcher = window.CTFd && typeof window.CTFd.fetch === "function"
-      ? window.CTFd.fetch.bind(window.CTFd)
-      : window.fetch.bind(window);
-    return fetcher(path, options).then(function (response) {
+    return fetchRequest(path, options).then(function (response) {
       if (!response || typeof response.json !== "function") {
         var invalidResponse = new Error("Request failed.");
         invalidResponse.queuePath = path;
