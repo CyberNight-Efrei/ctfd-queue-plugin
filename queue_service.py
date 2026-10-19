@@ -312,6 +312,7 @@ class QueueService:
             "show_position": bool(challenge.show_position),
             "show_eta": bool(challenge.show_eta),
             "selected_message": challenge.selected_message or "",
+            "round_number": challenge.round_number or 0,
         }
         if row.state == "waiting":
             waiters = QueueService.waiting_entries(challenge.id)
@@ -780,7 +781,7 @@ class QueueService:
                     QueueService._notification_for(
                         entry,
                         "Challenge flag",
-                        "The flag for {challenge_name} is: {}".format(flag_content),
+                        "The flag for {challenge_name} is: " + str(flag_content),
                         recipient_user_id=recipient_id,
                     )
                 )
