@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-mobile-v1">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-admin-mobile-v2">
 {% endblock %}
 
 {% block content %}
@@ -19,6 +19,9 @@
     </div>
     <div class="queue-header-actions">
       <a class="btn btn-outline-secondary" href="{{ url_for('admin.challenges_detail', challenge_id=challenge.id) }}">Edit challenge</a>
+      <button class="btn btn-outline-secondary" type="button" id="queue-copy-flag">
+        <span aria-hidden="true">▣</span> Copy flag
+      </button>
       <button class="btn btn-outline-primary" type="button" id="queue-refresh">
         <span aria-hidden="true">↻</span> Refresh
       </button>
@@ -65,7 +68,10 @@
             <td>{{ entry.team_name or '—' }}</td>
             <td>{{ entry.round_number or '—' }}</td>
             <td>{{ entry.selected_at or '—' }}</td>
-            <td class="text-right"><button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="{{ entry.id }}">Remove from queue</button></td>
+            <td class="queue-row-actions">
+              <button class="btn btn-sm btn-outline-primary" type="button" data-action="notify-flag" data-entry-id="{{ entry.id }}">Send flag to team</button>
+              <button class="btn btn-sm btn-outline-danger" type="button" data-action="remove" data-entry-id="{{ entry.id }}">Remove from queue</button>
+            </td>
           </tr>
         {% else %}
           <tr><td colspan="5" class="queue-empty-row">No participants are currently selected.</td></tr>
@@ -118,8 +124,10 @@
         <div id="queue-add-username-wrap">
           <label for="queue-add-username">CTFd username</label>
           <input class="form-control" id="queue-add-username" name="username" type="text"
-                 list="queue-user-suggestions" autocomplete="off" required placeholder="Start typing a username…">
-          <datalist id="queue-user-suggestions"></datalist>
+                 autocomplete="off" required aria-autocomplete="list"
+                 aria-controls="queue-user-suggestions" aria-expanded="false"
+                 placeholder="Start typing a username…">
+          <div id="queue-user-suggestions" class="queue-user-suggestions" role="listbox" hidden></div>
           <small class="text-muted">Start typing to see matching usernames.</small>
         </div>
         <div id="queue-add-user-id-wrap" hidden>
@@ -134,5 +142,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261019-queue-admin-v9"></script>
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261019-admin-v10"></script>
 {% endblock %}
