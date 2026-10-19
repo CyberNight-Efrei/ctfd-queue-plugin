@@ -757,16 +757,17 @@ class QueueService:
             if QueueService.has_solved_challenge(challenge, entry.user):
                 raise QueueError("The selected player's team has already solved this challenge.")
 
-            if entry.team_id is not None:
-                recipients = [
-                    user_id
-                    for (user_id,) in Users.query.with_entities(Users.id)
-                    .filter_by(team_id=entry.team_id)
-                    .order_by(Users.id.asc())
-                    .all()
-                ]
-            else:
-                recipients = [entry.user_id]
+            if entry.team_id is None:
+                raise QueueError(
+                    "The selected participant is not associated with a team."
+                )
+            recipients = [
+                user_id
+                for (user_id,) in Users.query.with_entities(Users.id)
+                .filter_by(team_id=entry.team_id)
+                .order_by(Users.id.asc())
+                .all()
+            ]
 
             recipients = sorted(set(recipients))
             if not recipients:
