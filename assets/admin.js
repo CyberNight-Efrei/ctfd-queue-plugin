@@ -143,8 +143,8 @@
     if (drawRefreshTriggered) return;
 
     drawRefreshTriggered = true;
-    refresh().then(function (succeeded) {
-      if (succeeded || !liveCounters.automatic) return;
+    refresh().then(function () {
+      if (!liveCounters.automatic) return;
       // The scheduler can be a few seconds behind the visual countdown.
       // Retry until the backend reports the next round/countdown.
       if (currentCounterValues().nextDrawSeconds <= 0) {
@@ -235,11 +235,7 @@
     }
     // A positive countdown means a new draw has been registered. Re-arm the
     // zero-crossing trigger for the next automatic round.
-    if (!liveCounters.automatic || liveCounters.nextDrawSeconds > 0) {
-      drawRefreshTriggered = false;
-    } else {
-      drawRefreshTriggered = true;
-    }
+    drawRefreshTriggered = false;
     renderCounters();
 
     var mode = document.getElementById("queue-mode");
