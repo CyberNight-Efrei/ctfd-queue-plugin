@@ -38,7 +38,7 @@ class QueueChallenge(CTFdStandardChallenge):
     scripts = {
         "create": "/plugins/queue_challenge/assets/create.js",
         "update": "/plugins/queue_challenge/assets/update.js",
-        "view": "/plugins/queue_challenge/assets/view.js?v=20261019-selected-state-fix",
+        "view": "/plugins/queue_challenge/assets/view.js?v=20261019-eta-cache-v2",
     }
 
     @classmethod
