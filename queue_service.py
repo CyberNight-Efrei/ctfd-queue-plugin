@@ -94,15 +94,13 @@ class QueueService:
             entry.position = index
 
     @staticmethod
-    def _notification_for(entry, title, content, recipient_user_id=None):
-        """Persist a private notification for exactly one user."""
+    def _store_private_notification(entry, title, content, recipient_user_id):
+        """Persist a notification to one explicit user without publishing it globally."""
         challenge = getattr(entry, "challenge", None)
         challenge_name = (
             getattr(challenge, "name", None) or "Challenge {}".format(entry.challenge_id)
         )
-        recipient_user_id = (
-            entry.user_id if recipient_user_id is None else int(recipient_user_id)
-        )
+        recipient_user_id = int(recipient_user_id)
         plain_content = str(content).replace("{challenge_name}", challenge_name, 1)
         notification = QueueNotification(
             recipient_user_id=recipient_user_id,
@@ -113,6 +111,20 @@ class QueueService:
         db.session.add(notification)
         db.session.flush()
         return notification
+
+    @staticmethod
+    def _notification_for(entry, title, content):
+        """Queue updates are always addressed to the specific player in the entry."""
+        return QueueService._store_private_notification(
+            entry, title, content, recipient_user_id=entry.user_id
+        )
+
+    @staticmethod
+    def _notification_for_team_flag_recipient(entry, title, content, recipient_user_id):
+        """Explicit recipient override reserved for the admin 'send flag to team' action."""
+        return QueueService._store_private_notification(
+            entry, title, content, recipient_user_id=recipient_user_id
+        )
 
     @staticmethod
     def _notify_next(challenge_id, events):
@@ -718,7 +730,7 @@ class QueueService:
 
             for recipient_id in recipients:
                 events.append(
-                    QueueService._notification_for(
+                    QueueService._notification_for_team_flag_recipient(
                         entry,
                         "Challenge flag",
                         "The flag for {challenge_name} is: " + str(flag_content),
