@@ -21,15 +21,41 @@
     listFeedback.textContent = message;
   }
 
+  function fetchRequest(path, options) {
+    var ctfd = window.CTFd;
+    if (ctfd && typeof ctfd.fetch === "function") return ctfd.fetch(path, options);
+
+    var requestPath = path;
+    var urlRoot = window.init && typeof window.init.urlRoot === "string"
+      ? window.init.urlRoot
+      : "";
+    if (path.charAt(0) === "/" && urlRoot) {
+      requestPath = urlRoot.replace(/\/+$/, "") + path;
+    }
+
+    var method = String(options.method || "GET").toUpperCase();
+    var safeMethod = method === "GET" || method === "HEAD" || method === "OPTIONS" || method === "TRACE";
+    var csrfNonce = window.init && window.init.csrfNonce;
+    if (!safeMethod && csrfNonce && options.headers &&
+        !options.headers["CSRF-Token"]) {
+      options.headers["CSRF-Token"] = csrfNonce;
+    }
+    if (typeof window.fetch !== "function") {
+      return Promise.reject(new Error("This browser does not support fetch()."));
+    }
+    return window.fetch(requestPath, options);
+  }
+
   function request(path, method, body) {
     var options = {
       method: method || "GET",
       credentials: "same-origin",
+      cache: "no-store",
       headers: { Accept: "application/json", "Content-Type": "application/json" }
     };
     if (body !== undefined) options.body = JSON.stringify(body);
 
-    return CTFd.fetch(path, options).then(function (response) {
+    return fetchRequest(path, options).then(function (response) {
       return response.json().catch(function () { return null; }).then(function (payload) {
         if (!response.ok || !payload || payload.success !== true) {
           var message = payload && (payload.message || payload.description || payload.error);
