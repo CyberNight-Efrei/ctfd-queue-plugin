@@ -236,8 +236,10 @@
       if (isSelected) {
         return "<tr><td>" + identity + '</td><td>' + team + '</td><td>' +
           escapeHtml(entry.round_number || "—") + '</td><td>' + escapeHtml(timeLabel(entry.selected_at)) +
-          '</td><td class="text-right"><button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' +
-          entry.id + '">Remove from queue</button></td></tr>';
+          '</td><td class="queue-row-actions">' +
+          '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + entry.id + '">Send flag to team</button>' +
+          '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + entry.id + '">Remove from queue</button>' +
+          '</td></tr>';
       }
       return '<tr><td><span class="queue-position">' + escapeHtml(entry.position) + "</span>" + (Number(entry.position) === 1 ? ' <span class="queue-badge queue-badge-auto ml-2">Next</span>' : "") + "</td><td>" +
         identity + "</td><td>" + team + "</td><td>" + escapeHtml(timeLabel(entry.joined_at)) +
@@ -427,6 +429,59 @@
     });
   }
 
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      return navigator.clipboard.writeText(text).catch(function () {
+        return copyTextFallback(text);
+      });
+    }
+    return copyTextFallback(text);
+  }
+
+  function copyTextFallback(text) {
+    var textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-10000px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    var copied = false;
+    try { copied = document.execCommand("copy"); } catch (_) { copied = false; }
+    textarea.remove();
+    return copied ? Promise.resolve() : Promise.reject(new Error("Clipboard access was blocked by the browser."));
+  }
+
+  var copyFlagButton = document.getElementById("queue-copy-flag");
+  if (copyFlagButton) {
+    copyFlagButton.addEventListener("click", function () {
+      copyFlagButton.disabled = true;
+      api(base + "/admin/challenges/" + challengeId + "/flag")
+        .then(function (data) {
+          if (!data || typeof data.content !== "string" || !data.content) {
+            throw new Error("No copyable static flag is configured for this challenge.");
+          }
+          return copyTextToClipboard(data.content);
+        })
+        .then(function () {
+          showFeedback("Challenge flag copied to clipboard.", false);
+          copyFlagButton.textContent = "Flag copied ✓";
+        })
+        .catch(function (error) {
+          logApiFailure(error, "copy challenge flag");
+          showFeedback(error.message, true);
+        })
+        .then(function () {
+          copyFlagButton.disabled = false;
+          window.setTimeout(function () {
+            copyFlagButton.innerHTML = '<span aria-hidden="true">▣</span> Copy flag';
+          }, 1800);
+        });
+    });
+  }
+
   var advance = document.getElementById("queue-advance");
   if (advance) {
     advance.addEventListener("click", function () {
@@ -446,6 +501,14 @@
       runAction(base + "/admin/entries/" + entryId + "/move", "POST", {
         direction: action === "move-up" ? "up" : "down"
       }, "Queue order updated.").then(function () { button.disabled = false; });
+    } else if (action === "notify-flag") {
+      if (!window.confirm("Send the challenge flag only to the team of this selected participant?")) {
+        button.disabled = false;
+        return;
+      }
+      runAction(base + "/admin/entries/" + entryId + "/notify-flag", "POST", {},
+        "Flag notification sent to the selected participant's team.")
+        .then(function () { button.disabled = false; });
     } else if (action === "remove") {
       if (!window.confirm("Remove this participant from the active queue?")) {
         button.disabled = false;
@@ -488,6 +551,8 @@
     if (suggestionTimer !== null) window.clearTimeout(suggestionTimer);
     if (!query) {
       suggestionList.innerHTML = "";
+      suggestionList.hidden = true;
+      usernameInput.setAttribute("aria-expanded", "false");
       return;
     }
 
@@ -499,8 +564,13 @@
               lookupMode.value !== "username") return;
           var users = data && Array.isArray(data.users) ? data.users : [];
           suggestionList.innerHTML = users.map(function (user) {
-            return '<option value="' + escapeHtml(user.username) + '"></option>';
+            return '<button type="button" class="queue-user-suggestion-option" role="option" data-username="' +
+              escapeHtml(user.username) + '">' +
+              '<span>' + escapeHtml(user.username) + '</span>' +
+              '<small>#' + escapeHtml(user.id) + '</small></button>';
           }).join("");
+          suggestionList.hidden = users.length === 0;
+          usernameInput.setAttribute("aria-expanded", users.length > 0 ? "true" : "false");
         })
         .catch(function (error) {
           logApiFailure(error, "username suggestions");
@@ -510,10 +580,25 @@
 
   if (lookupMode) lookupMode.addEventListener("change", function () {
     updateLookupMode();
-    if (suggestionList) suggestionList.innerHTML = "";
+    if (suggestionList) {
+      suggestionList.innerHTML = "";
+      suggestionList.hidden = true;
+    }
+    if (usernameInput) usernameInput.setAttribute("aria-expanded", "false");
     if (lookupMode.value === "username") fetchUsernameSuggestions();
   });
   if (usernameInput) usernameInput.addEventListener("input", fetchUsernameSuggestions);
+  if (suggestionList) {
+    suggestionList.addEventListener("click", function (event) {
+      var option = event.target.closest("[data-username]");
+      if (!option || !usernameInput) return;
+      usernameInput.value = option.dataset.username || "";
+      suggestionList.hidden = true;
+      suggestionList.innerHTML = "";
+      usernameInput.setAttribute("aria-expanded", "false");
+      usernameInput.focus();
+    });
+  }
   updateLookupMode();
 
   if (addForm) {
@@ -541,7 +626,11 @@
           if (!succeeded) return;
           if (usernameInput) usernameInput.value = "";
           if (userIdInput) userIdInput.value = "";
-          if (suggestionList) suggestionList.innerHTML = "";
+          if (suggestionList) {
+            suggestionList.innerHTML = "";
+            suggestionList.hidden = true;
+          }
+          if (usernameInput) usernameInput.setAttribute("aria-expanded", "false");
         });
     });
   }
