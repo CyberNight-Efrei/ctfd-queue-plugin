@@ -157,9 +157,9 @@ CTFd._internal.challenge.submit = function (preview) {
         renderWaitingDetails();
         break;
       case "selected":
-        action.textContent = "Leave queue";
-        action.classList.add("btn-danger");
-        action.disabled = !status.can_leave;
+        action.textContent = "Selected, you may now participate";
+        action.classList.add("btn-success");
+        action.disabled = true;
         message.className = "alert alert-success mb-2";
         setText(message, status.selected_message || "You have been selected! You may now attempt this challenge.");
         if (details && status.round_number) setText(details, "Selection round " + status.round_number);
