@@ -280,19 +280,13 @@ class QueueService:
                 "selected_message": challenge.selected_message or "",
             }
 
-        # Automatic eviction is terminal for this queue entry, including for teammates.
+        # Eviction only ends the current round; it does not prevent rejoining.
         if row.state == "evicted":
             return {
-                "state": "evicted",
-                "can_join": False,
+                **common_status,
+                "state": "not_joined",
+                "can_join": True,
                 "can_leave": False,
-                "can_submit": True,
-                "queue_mode": challenge.queue_mode,
-                "batch_size": challenge.batch_size,
-                "interval_seconds": challenge.interval_seconds,
-                "show_position": False,
-                "show_eta": False,
-                "selected_message": challenge.selected_message or "",
             }
 
         if row.state != "completed" and row.account_key.startswith("team:") and row.user_id != user.id:
@@ -340,7 +334,7 @@ class QueueService:
                 {
                     "state": "selected",
                     "can_join": False,
-                    "can_leave": False,
+                    "can_leave": True,
                     "can_submit": True,
                     "position": None,
                     "round_number": row.round_number,
@@ -387,11 +381,8 @@ class QueueService:
             if row and row.state in ("waiting", "selected"):
                 db.session.rollback()
                 return QueueService.user_status(challenge.id, user, team)
-            if row and row.state in ("completed", "evicted"):
-                was_evicted = row.state == "evicted"
+            if row and row.state == "completed":
                 db.session.rollback()
-                if was_evicted:
-                    raise QueueError("You have been removed from this queue and cannot rejoin.")
                 raise QueueError("You have already completed this challenge.")
 
             waiters = QueueService.waiting_entries(challenge.id)
@@ -465,12 +456,8 @@ class QueueService:
             ).first()
             if row is None or row.state == "left":
                 raise QueueError("You are not in this queue.")
-            if row.state == "evicted":
-                raise QueueError("You have been removed from this queue and cannot rejoin.")
             if row.account_key.startswith("team:") and row.user_id != user.id:
                 raise QueueError("Another teammate registered this team; only that player can leave the queue.")
-            if row.state == "selected":
-                raise QueueError("You have already been selected and cannot leave the queue.")
             if row.state == "completed":
                 raise QueueError("You have already completed this challenge.")
             row.state = "left"
@@ -694,9 +681,7 @@ class QueueService:
             ).first()
             if row and row.state in ("waiting", "selected"):
                 raise QueueError("This user or their team is already in the queue.")
-            if row and row.state in ("completed", "evicted"):
-                if row.state == "evicted":
-                    raise QueueError("This user or team has already been evicted from the queue.")
+            if row and row.state == "completed":
                 raise QueueError("This user or team has already completed the challenge.")
 
             position = len(QueueService.waiting_entries(challenge.id)) + 1
@@ -797,8 +782,6 @@ class QueueService:
             row = QueueEntry.query.filter_by(id=entry_id).with_for_update().first()
             if row is None:
                 raise QueueError("Queue entry not found.")
-            if row.state == "evicted":
-                raise QueueError("This participant has already been evicted from the queue.")
             challenge_id = row.challenge_id
             row.state = "left"
             row.left_at = _utcnow()
