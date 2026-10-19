@@ -223,17 +223,33 @@
     refreshInProgress = true;
     var refreshButton = document.getElementById("queue-refresh");
     var refreshStatus = document.getElementById("queue-refresh-status");
-    var originalLabel = refreshButton ? refreshButton.innerHTML : "";
+    var originalLabel = refreshButton ? refreshButton.getAttribute("data-idle-label") : "↻ Refresh";
     if (refreshButton) {
+      if (!refreshButton.getAttribute("data-idle-label")) {
+        refreshButton.setAttribute("data-idle-label", refreshButton.innerHTML);
+        originalLabel = refreshButton.getAttribute("data-idle-label");
+      }
       refreshButton.disabled = true;
+      refreshButton.setAttribute("aria-busy", "true");
       refreshButton.innerHTML = '<span aria-hidden="true">↻</span> Refreshing…';
     }
     if (refreshStatus) refreshStatus.textContent = "Refreshing queue data…";
 
-    // A unique query parameter and cache: no-store ensure that manual refresh
-    // always requests the current queue state instead of a cached GET response.
     var stateUrl = base + "/admin/challenges/" + challengeId + "/state?_refresh=" + Date.now();
-    return api(stateUrl)
+    var timeoutId;
+    var timeout = new Promise(function (_, reject) {
+      timeoutId = window.setTimeout(function () {
+        var error = new Error("The queue API did not respond within 15 seconds.");
+        error.queuePath = stateUrl;
+        error.queueStatus = 0;
+        reject(error);
+      }, 15000);
+    });
+
+    return Promise.race([
+      Promise.resolve().then(function () { return api(stateUrl); }),
+      timeout
+    ])
       .then(function (state) {
         renderState(state);
         if (refreshStatus) refreshStatus.textContent = "Last refreshed at " + new Date().toLocaleTimeString();
@@ -246,15 +262,28 @@
         return false;
       })
       .then(function (succeeded) {
+        window.clearTimeout(timeoutId);
         refreshInProgress = false;
         if (refreshButton) {
           refreshButton.disabled = false;
+          refreshButton.removeAttribute("aria-busy");
           refreshButton.innerHTML = originalLabel;
         }
         return succeeded;
+      }, function (error) {
+        window.clearTimeout(timeoutId);
+        refreshInProgress = false;
+        if (refreshButton) {
+          refreshButton.disabled = false;
+          refreshButton.removeAttribute("aria-busy");
+          refreshButton.innerHTML = originalLabel;
+        }
+        logApiFailure(error, "admin state refresh cleanup");
+        if (refreshStatus) refreshStatus.textContent = "Refresh failed at " + new Date().toLocaleTimeString();
+        showFeedback("Could not refresh queue data: " + (error.message || "Unknown error"), true);
+        return false;
       });
   }
-
   function runAction(path, method, body, successMessage) {
     return api(path, method, body).then(function (data) {
       if (data && data.challenge && data.waiting) renderState(data);
@@ -411,7 +440,8 @@
     });
   }
 
+  // Keep the clock independent from API requests, including a stalled first refresh.
   renderCounters();
-  refresh();
   window.setInterval(tickCounters, 1000);
+  refresh();
 })();
