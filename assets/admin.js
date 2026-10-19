@@ -35,7 +35,10 @@
       headers: { Accept: "application/json", "Content-Type": "application/json" }
     };
     if (body !== undefined) options.body = JSON.stringify(body);
-    return window.fetch(path, options).then(function (response) {
+    var fetcher = window.CTFd && typeof window.CTFd.fetch === "function"
+      ? window.CTFd.fetch.bind(window.CTFd)
+      : window.fetch.bind(window);
+    return fetcher(path, options).then(function (response) {
       if (!response || typeof response.json !== "function") {
         var invalidResponse = new Error("Request failed.");
         invalidResponse.queuePath = path;
