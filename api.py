@@ -9,6 +9,7 @@ from CTFd.utils.decorators import admins_only, authed_only, during_ctf_time_only
 from CTFd.utils.modules import can_access_challenge
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
 
+from .models import QueueEntry
 from .queue_service import QueueError, QueueService
 
 log = logging.getLogger("ctfd.queue_challenge.api")
@@ -282,10 +283,10 @@ class AdminQueueCopyFlag(Resource):
                 item for item in flags
                 if getattr(item, "type", None) == "static" and getattr(item, "content", None)
             ),
-            next((item for item in flags if getattr(item, "content", None)), None),
+            None,
         )
         if flag is None:
-            abort(400, "No copyable flag content is configured for this challenge.")
+            abort(400, "No static flag is configured for this challenge.")
         return {
             "success": True,
             "data": {
@@ -294,6 +295,38 @@ class AdminQueueCopyFlag(Resource):
                 "flag_count": len(flags),
             },
         }
+
+
+@queue_namespace.route("/admin/entries/<int:entry_id>/notify-flag")
+class AdminQueueNotifyFlag(Resource):
+    @admins_only
+    def post(self, entry_id):
+        entry = QueueEntry.query.filter_by(id=entry_id).first()
+        if entry is None:
+            abort(404, "Queue entry not found.")
+        challenge = _admin_challenge(entry.challenge_id)
+        flags = (
+            Flags.query.filter_by(challenge_id=challenge.id)
+            .order_by(Flags.id.asc())
+            .all()
+        )
+        flag = next(
+            (
+                item for item in flags
+                if getattr(item, "type", None) == "static" and getattr(item, "content", None)
+            ),
+            None,
+        )
+        if flag is None:
+            abort(400, "No static flag is configured for this challenge.")
+
+        return _run_queue_operation(
+            lambda: QueueService.notify_flag_to_selected_team(entry_id, flag.content),
+            operation="admin_notify_flag",
+            challenge_id=challenge.id,
+            entry_id=entry_id,
+        )
+
 
 @queue_namespace.route("/admin/challenges/<int:challenge_id>/entries")
 class AdminQueueAdd(Resource):
