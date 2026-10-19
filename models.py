@@ -36,7 +36,7 @@ class QueueChallengeModel(Challenges):
 
 
 class QueueEntry(db.Model):
-    """One signup per challenge and account; left entries rejoin, evicted entries are terminal."""
+    """One signup per challenge and account; entries can rejoin until the challenge is solved."""
 
     __tablename__ = "queue_entries"
     __table_args__ = (
