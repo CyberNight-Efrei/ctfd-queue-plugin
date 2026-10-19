@@ -10,7 +10,7 @@ The challenge inherits CTFd's standard challenge model and scoring implementatio
 - FIFO signup by default, with administrator controls to reorder, add, remove, and revoke participants.
 - In automatic mode, a background worker advances due queues and selects the configured number of waiting entries.
 - In manual mode, administrators advance a queue explicitly from the CTFd administration page.
-- The selected participant receives a CTFd notification when selected. The first waiting participant is notified when they become next in line. At the next iteration, any entries still selected from the previous round are permanently evicted from the queue, even when no one is waiting.
+- The selected participant receives a CTFd notification when selected. The first waiting participant is notified when they become next in line. At the next iteration, any entries still selected from the previous round are removed from the active round, even when no one is waiting; they may rejoin unless their scoring account has solved the challenge.
 - In team mode, a queue slot is reserved per team and the registering player receives the selection notification. CTFd's configured team-solving rules remain in effect.
 - Queue operations and notification records are persisted in CTFd's database.
 
@@ -39,7 +39,7 @@ CTFd's native scoring options are available directly during creation: static, li
 
 The Queues menu provides an overview of all queue challenges. The overview supports filtering by challenge name, visibility, and progression mode; each row can advance its queue or copy a configured flag directly to the clipboard without displaying it. Administrators can select multiple challenges and advance their queues in one batch operation. Each challenge detail page shows selected participants, the waiting queue, round number, time since the last draw, progression mode, interval, and batch size.
 
-Administrators can manually refresh the queue state, optionally enable automatic refresh every two minutes, and advance the queue, move waiting participants up or down, or remove a participant from the active queue. Participants can be added directly by CTFd username or user ID. Username autocomplete is available in the administrator form. The participant's estimated wait and the administrator's elapsed-since-draw and next-draw estimates update every second between status refreshes; the queue mode is shown as a colored badge. Entries removed by an administrator can rejoin unless their CTFd scoring account has already solved the challenge. Automatically evicted entries are terminal for the queue.
+Administrators can manually refresh the queue state, optionally enable automatic refresh every two minutes, and advance the queue, move waiting participants up or down, or remove a participant from the active queue. Participants can be added directly by CTFd username or user ID. Username autocomplete is available in the administrator form. The participant's estimated wait and the administrator's elapsed-since-draw and next-draw estimates update every second between status refreshes; the queue mode is shown as a colored badge. Participants may leave even after selection and rejoin after leaving, administrator removal, or automatic eviction, provided their CTFd scoring account has not solved the challenge.
 
 ## Automatic progression and deployments
 
