@@ -1,5 +1,6 @@
 """REST API endpoints for queue participants and administrators."""
 import logging
+from datetime import datetime
 
 from flask import request
 from flask_restx import Namespace, Resource, abort
@@ -9,7 +10,7 @@ from CTFd.utils.decorators import admins_only, authed_only, during_ctf_time_only
 from CTFd.utils.modules import can_access_challenge
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
 
-from .models import QueueEntry
+from .models import QueueEntry, QueueNotification, db
 from .queue_service import QueueError, QueueService
 
 log = logging.getLogger("ctfd.queue_challenge.api")
@@ -204,6 +205,59 @@ class UserQueueLeave(Resource):
             operation="leave",
             challenge_id=challenge.id,
         )
+
+
+@queue_namespace.route("/notifications")
+class UserQueueNotifications(Resource):
+    @authed_only
+    def get(self):
+        user = get_current_user()
+        notifications = (
+            QueueNotification.query.filter_by(
+                recipient_user_id=user.id,
+                acknowledged_at=None,
+            )
+            .order_by(QueueNotification.id.asc())
+            .limit(50)
+            .all()
+        )
+        return {
+            "success": True,
+            "data": {
+                "notifications": [
+                    {
+                        "id": notification.id,
+                        "title": notification.title,
+                        "content": notification.content,
+                        "date": (
+                            notification.created_at.isoformat()
+                            if notification.created_at
+                            else None
+                        ),
+                    }
+                    for notification in notifications
+                ]
+            },
+        }
+
+
+@queue_namespace.route("/notifications/<int:notification_id>/ack")
+class UserQueueNotificationAcknowledge(Resource):
+    @authed_only
+    def post(self, notification_id):
+        user = get_current_user()
+        notification = QueueNotification.query.filter_by(
+            id=notification_id,
+            recipient_user_id=user.id,
+        ).first()
+        if notification is None:
+            abort(404, "Queue notification not found.")
+
+        if notification.acknowledged_at is None:
+            notification.acknowledged_at = datetime.utcnow()
+            db.session.commit()
+
+        return {"success": True, "data": {"id": notification.id}}
 
 
 @queue_namespace.route("/admin/challenges/<int:challenge_id>/state")

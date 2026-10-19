@@ -258,7 +258,7 @@ def load(app):
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
     )
-    register_plugin_script("/plugins/queue_challenge/assets/notifications.js")
+    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261020-private-poll-v1")
     register_admin_plugin_menu_bar(
         title="Queues", route="/plugins/ctfd-queue/admin"
     )

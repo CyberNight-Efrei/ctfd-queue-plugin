@@ -2,15 +2,14 @@
 import logging
 import math
 from datetime import datetime, timedelta
-from html import escape as escape_html
 
 from sqlalchemy.exc import IntegrityError
 
-from CTFd.models import Notifications, Solves, Users, db
+from CTFd.models import Solves, Users, db
 from CTFd.utils import get_config
 from CTFd.utils.user import get_current_team, get_current_user
 
-from .models import QueueChallengeModel, QueueEntry
+from .models import QueueChallengeModel, QueueEntry, QueueNotification
 
 log = logging.getLogger("ctfd.queue_challenge")
 
@@ -26,30 +25,14 @@ def _utcnow():
     return datetime.utcnow()
 
 
-def _publish_notifications(payloads):
-    """Publish stored notifications to CTFd's live event stream when available."""
-    try:
-        from flask import current_app
+def _publish_notifications(notifications):
+    """Do not broadcast private queue notification content over CTFd's shared SSE stream.
 
-        manager = getattr(current_app, "events_manager", None)
-        if manager is None:
-            if payloads:
-                log.warning(
-                    "Queue notifications were saved but live delivery is unavailable "
-                    "(event manager missing); notification_count=%s",
-                    len(payloads),
-                )
-            return
-        for payload in payloads:
-            # CTFd's built-in "notification" SSE event is broadcast to every
-            # connected client. Queue notifications are private to one user, so
-            # send a distinct event name and filter it client-side by user_id.
-            manager.publish(data=payload, type="queue_notification")
-    except Exception:
-        # Persistence is the source of truth; a live-event failure must not undo
-        # a draw and should be visible in logs.
-        log.exception("Could not publish a queue notification event")
-
+    Recipients retrieve their own notifications through the authenticated queue API.
+    """
+    # Keep callers explicit about their post-commit notification step while
+    # ensuring the payload (which may contain a flag) is never sent platform-wide.
+    return
 
 class QueueService:
     @staticmethod
@@ -112,7 +95,7 @@ class QueueService:
 
     @staticmethod
     def _notification_for(entry, title, content, recipient_user_id=None):
-        """Create a native CTFd notification and return its live-event payload."""
+        """Persist a private notification for exactly one user."""
         challenge = getattr(entry, "challenge", None)
         challenge_name = (
             getattr(challenge, "name", None) or "Challenge {}".format(entry.challenge_id)
@@ -120,56 +103,16 @@ class QueueService:
         recipient_user_id = (
             entry.user_id if recipient_user_id is None else int(recipient_user_id)
         )
-        # Place the challenge name inside the sentence and bold only that name
-        # in the live popup. Both the name and message are safely HTML-escaped.
         plain_content = str(content).replace("{challenge_name}", challenge_name, 1)
-        escaped_content = escape_html(plain_content)
-        escaped_name = escape_html(challenge_name)
-        html_content = escaped_content.replace(
-            escaped_name, "<strong>{}</strong>".format(escaped_name), 1
-        )
-        notification = Notifications(
-            title=title, content=plain_content, user_id=recipient_user_id
+        notification = QueueNotification(
+            recipient_user_id=recipient_user_id,
+            queue_entry_id=entry.id,
+            title=str(title)[:160],
+            content=plain_content,
         )
         db.session.add(notification)
         db.session.flush()
-
-        # CTFd 3.x uses Marshmallow 2 (result.data); tolerate the dict-returning
-        # API used by newer Marshmallow versions as well.
-        try:
-            from CTFd.schemas.notifications import NotificationSchema
-
-            dumped = NotificationSchema().dump(notification)
-            payload = dumped.data if hasattr(dumped, "data") else dumped
-            if not isinstance(payload, dict):
-                payload = {}
-        except Exception:
-            log.exception(
-                "Could not serialize queue notification for user_id=%s; "
-                "using fallback payload",
-                entry.user_id,
-            )
-            payload = {}
-
-        payload.update(
-            {
-                "id": notification.id,
-                "title": title,
-                "content": plain_content,
-                # CTFd's live popup renderer reads html rather than content.
-                "html": html_content,
-                "date": (
-                    notification.date.isoformat()
-                    if notification.date
-                    else _utcnow().isoformat()
-                ),
-                "user_id": recipient_user_id,
-                "team_id": notification.team_id,
-                "type": "alert",
-                "sound": True,
-            }
-        )
-        return payload
+        return notification
 
     @staticmethod
     def _notify_next(challenge_id, events):

@@ -1,133 +1,174 @@
-/* Queue notifications use the same Alert + sound behavior as CTFd's
- * native notification handler, while keeping a distinct SSE event name.
- */
 (function () {
-  if (typeof EventSource === "undefined" || !window.init) return;
+  if (!window.init) return;
 
   var userId = Number(window.init.userId);
   if (!Number.isInteger(userId) || userId <= 0) return;
 
   var root = typeof window.init.urlRoot === "string" ? window.init.urlRoot : "";
-  var source = new EventSource(root + "/events");
+  var base = "/api/v1/plugins/ctfd-queue";
+  var pollInProgress = false;
+  var seen = Object.create(null);
+  var lastWarningAt = 0;
 
-  function logNotificationWarning(message, error) {
-    if (!window.console || typeof console.warn !== "function") return;
-    if (error) {
-      console.warn("[Queue Challenge] " + message, error);
-    } else {
-      console.warn("[Queue Challenge] " + message);
+  function warn(message, error) {
+    var now = Date.now();
+    if (now - lastWarningAt < 60000) return;
+    lastWarningAt = now;
+    if (window.console && typeof console.warn === "function") {
+      console.warn("[Queue Challenge] " + message, error || "");
     }
   }
 
-  function playNotificationSound() {
-    var ctfd = window.CTFd;
-    var events = ctfd && ctfd.events;
+  function request(path, method, body) {
+    var options = {
+      method: method || "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    };
+    if (body !== undefined) options.body = JSON.stringify(body);
 
-    // CTFd.js initializes Howler with the same eventSounds configured by the
-    // active theme. Reuse it rather than introducing a second sound player.
+    var ctfd = window.CTFd;
+    if (ctfd && typeof ctfd.fetch === "function") {
+      return ctfd.fetch(path, options);
+    }
+
+    var requestPath = path;
+    if (path.charAt(0) === "/" && root) {
+      requestPath = root.replace(/\\/+$/, "") + path;
+    }
+    var safeMethod = /^(GET|HEAD|OPTIONS|TRACE)$/i.test(options.method);
+    var csrfNonce = window.init && window.init.csrfNonce;
+    if (!safeMethod && csrfNonce) {
+      options.headers["CSRF-Token"] = csrfNonce;
+    }
+    return window.fetch(requestPath, options);
+  }
+
+  function api(path, method, body) {
+    return request(path, method, body).then(function (response) {
+      if (!response || typeof response.json !== "function") {
+        throw new Error("The queue notification API returned an invalid response.");
+      }
+      return response.json().catch(function () {
+        return null;
+      }).then(function (payload) {
+        if (!response.ok || !payload || payload.success !== true) {
+          var message = payload && (payload.message || payload.description || payload.error);
+          throw new Error(message || ("Queue notification request failed (HTTP " +
+            (response.status || 0) + ")."));
+        }
+        return payload.data || {};
+      });
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch];
+    });
+  }
+
+  function isMasterTab() {
+    var events = window.CTFd && window.CTFd.events;
+    var controller = events && events.controller;
+    return !(controller && controller.isMaster === false);
+  }
+
+  function playNotificationSound() {
+    var events = window.CTFd && window.CTFd.events;
     if (events && events.howl && typeof events.howl.play === "function") {
       try {
         events.howl.play();
       } catch (error) {
-        logNotificationWarning("Could not play the native CTFd notification sound.", error);
+        warn("Could not play the CTFd notification sound.", error);
       }
       return;
     }
 
-    // Compatibility fallback for themes/CTFd versions that expose eventSounds
-    // but not the Howler instance through CTFd.events.
-    var sounds = window.init.eventSounds;
+    var sounds = window.init && window.init.eventSounds;
     if (typeof Audio !== "undefined" && Array.isArray(sounds) && sounds.length > 0) {
       try {
         var audio = new Audio(sounds[0]);
         var playback = audio.play();
         if (playback && typeof playback.catch === "function") {
           playback.catch(function (error) {
-            logNotificationWarning(
-              "Browser refused to play the queue notification sound.",
-              error
-            );
+            warn("Browser refused to play the queue notification sound.", error);
           });
         }
       } catch (error) {
-        logNotificationWarning("Could not start the queue notification sound.", error);
+        warn("Could not start the queue notification sound.", error);
       }
-      return;
     }
-
-    logNotificationWarning(
-      "A queue notification requested sound, but no CTFd notification audio player is available."
-    );
   }
 
-  function renderNotification(payload) {
+  function renderNotification(item) {
     var ctfd = window.CTFd;
     var handlers = ctfd && ctfd._functions && ctfd._functions.events;
-    var notificationType = payload.type || "alert";
     var notification = {
-      id: payload.id,
-      title: payload.title || "Queue update",
-      content: payload.content || "",
-      html: payload.html || payload.content || "",
-      type: notificationType,
-      sound: payload.sound !== false
+      id: item.id,
+      title: item.title || "Queue update",
+      content: item.content || "",
+      // Queue message content may include flags or configured text; treat it as plain text.
+      html: escapeHtml(item.content || ""),
+      type: "alert",
+      sound: true
     };
 
-    // CTFd uses one elected master tab for built-in notification rendering and
-    // sound playback. Our custom SSE event must follow the same rule to avoid
-    // duplicate popups/sounds when the participant has multiple tabs open.
-    var events = ctfd && ctfd.events;
-    var controller = events && events.controller;
-    if (controller && controller.isMaster === false) return;
-
-    if (notificationType === "alert" && handlers &&
-        typeof handlers.eventAlert === "function") {
+    if (handlers && typeof handlers.eventAlert === "function") {
       handlers.eventAlert(notification);
-    } else if (notificationType === "toast" && handlers &&
-               typeof handlers.eventToast === "function") {
-      handlers.eventToast(notification);
-    } else if (notificationType === "background" && handlers &&
-               typeof handlers.eventBackground === "function") {
-      handlers.eventBackground(notification);
-    } else if (notificationType === "alert") {
-      // Fallback for a theme which does not expose CTFd's modal event handler.
-      window.alert(notification.title + "\n\n" + notification.content);
     } else {
-      logNotificationWarning(
-        "CTFd has no renderer for queue notification type: " + notificationType
-      );
+      window.alert(notification.title + "\n\n" + notification.content);
     }
-
-    if (notification.sound) {
-      playNotificationSound();
-    }
+    playNotificationSound();
   }
 
-  source.addEventListener("queue_notification", function (event) {
-    var payload;
-    try {
-      payload = JSON.parse(event.data);
-    } catch (error) {
-      logNotificationWarning("Could not parse a queue notification event.", error);
-      return;
-    }
+  function poll() {
+    if (pollInProgress || !isMasterTab()) return;
+    pollInProgress = true;
 
-    if (!payload || Number(payload.user_id) !== userId) return;
-    renderNotification(payload);
-  });
+    api(base + "/notifications", "GET")
+      .then(function (data) {
+        var items = Array.isArray(data.notifications) ? data.notifications : [];
+        var chain = Promise.resolve();
 
-  var connectionErrorReported = false;
+        items.forEach(function (item) {
+          var id = Number(item && item.id);
+          if (!Number.isInteger(id) || id <= 0 || seen[id]) return;
 
-  source.addEventListener("open", function () {
-    connectionErrorReported = false;
-  });
+          chain = chain.then(function () {
+            if (seen[id]) return;
+            // Acknowledge through an endpoint that verifies recipient_user_id before
+            // rendering; notification contents are never included in a broadcast event.
+            return api(base + "/notifications/" + id + "/ack", "POST", {})
+              .then(function () {
+                seen[id] = true;
+                renderNotification(item);
+              });
+          }).catch(function (error) {
+            warn("Could not acknowledge or render a private queue notification.", error);
+          });
+        });
 
-  source.addEventListener("error", function () {
-    // EventSource reconnects automatically. Log once per outage to avoid console spam.
-    if (connectionErrorReported) return;
-    connectionErrorReported = true;
-    logNotificationWarning(
-      "Live queue notification stream disconnected; browser reconnection is automatic."
-    );
-  });
+        return chain;
+      })
+      .catch(function (error) {
+        warn("Could not retrieve private queue notifications.", error);
+      })
+      .then(function () {
+        pollInProgress = false;
+      });
+  }
+
+  poll();
+  window.setInterval(poll, 3000);
 })();
