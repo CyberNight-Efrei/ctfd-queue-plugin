@@ -132,7 +132,8 @@
     nextDrawSeconds: Math.max(0, Number(root.dataset.nextDrawInSeconds) || 0),
     syncedAt: Date.now(),
     hasDrawn: root.dataset.hasDrawn === "true",
-    automatic: root.dataset.queueMode === "automatic"
+    automatic: root.dataset.queueMode === "automatic",
+    intervalSeconds: Math.max(0, Number(root.dataset.intervalSeconds) || 0)
   };
   var refreshInProgress = false;
   var autoRefreshTimer = null;
@@ -152,9 +153,17 @@
     var elapsed = document.getElementById("queue-elapsed");
     var nextDraw = document.getElementById("queue-next-draw");
     var current = currentCounterValues();
-    if (elapsed) elapsed.textContent = liveCounters.hasDrawn
-      ? duration(current.elapsedSeconds)
-      : "No draw yet";
+    if (elapsed) {
+      elapsed.textContent = liveCounters.hasDrawn
+        ? duration(current.elapsedSeconds)
+        : "No draw yet";
+      elapsed.classList.remove("queue-time-warning", "queue-time-danger");
+      if (liveCounters.hasDrawn && liveCounters.intervalSeconds > 0) {
+        var elapsedRatio = current.elapsedSeconds / liveCounters.intervalSeconds;
+        if (elapsedRatio > 0.9) elapsed.classList.add("queue-time-danger");
+        else if (elapsedRatio > 0.75) elapsed.classList.add("queue-time-warning");
+      }
+    }
     if (nextDraw) nextDraw.textContent = liveCounters.automatic
       ? duration(current.nextDrawSeconds)
       : "Manual";
@@ -259,6 +268,7 @@
     liveCounters.hasDrawn = Boolean(challenge.has_drawn);
     liveCounters.elapsedSeconds = Math.max(0, Number(challenge.elapsed_seconds) || 0);
     liveCounters.automatic = challenge.queue_mode === "automatic";
+    liveCounters.intervalSeconds = Math.max(0, Number(challenge.interval_seconds) || 0);
     liveCounters.nextDrawSeconds = Math.max(0, Number(challenge.next_draw_in_seconds) || 0);
     liveCounters.syncedAt = Date.now();
     if (drawRefreshTimer !== null) {
