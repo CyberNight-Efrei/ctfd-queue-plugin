@@ -233,9 +233,9 @@ CTFd._internal.challenge.submit = function (preview) {
         renderWaitingDetails();
         break;
       case "selected":
-        action.textContent = "Leave queue";
-        action.classList.add("btn-danger");
-        action.disabled = status.can_leave === false;
+        action.textContent = "Selected - you may now participate";
+        action.classList.add("btn-success");
+        action.disabled = true;
         message.className = "alert alert-success mb-2";
         setText(message, status.selected_message || "You have been selected! You may now participate in this challenge.");
         if (details && status.round_number) setText(details, "Selection round " + status.round_number);
@@ -322,7 +322,7 @@ CTFd._internal.challenge.submit = function (preview) {
     action.addEventListener("click", function () {
       if (busy || !currentStatus) return;
       var challengeId = parseInt(idElement.value, 10);
-      var shouldLeave = currentStatus.state === "waiting" || currentStatus.state === "selected";
+      var shouldLeave = currentStatus.state === "waiting";
       if (shouldLeave && currentStatus.can_leave === false) return;
       if (!shouldLeave && (currentStatus.state !== "not_joined" || currentStatus.can_join === false)) return;
       busy = true;
