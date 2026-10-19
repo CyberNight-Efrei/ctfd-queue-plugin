@@ -593,3 +593,20 @@
 .queue-user-suggestion-option small { color: #64748b; white-space: nowrap; }
 #queue-elapsed.queue-time-warning { color: var(--bs-warning, #d97706) !important; }
 #queue-elapsed.queue-time-danger { color: var(--bs-danger, #dc2626) !important; }
+
+
+/* Let the username autocomplete escape the add-participant card instead of
+   being clipped by the shared queue-panel overflow rule. Keep it above nearby
+   panels and tables while the suggestion list is open. */
+.queue-panel.queue-add-participant-panel {
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+.queue-add-participant-panel .queue-add-form,
+.queue-add-participant-panel #queue-add-username-wrap {
+  position: relative;
+}
+.queue-add-participant-panel .queue-user-suggestions {
+  z-index: 1060;
+}

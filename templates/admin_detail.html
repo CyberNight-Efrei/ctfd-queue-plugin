@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-admin-detail-v3">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261020-admin-dropdown-v1">
 {% endblock %}
 
 {% block content %}
@@ -114,7 +114,7 @@
     </div>
   </div>
 
-  <div class="queue-panel">
+  <div class="queue-panel queue-add-participant-panel">
     <div class="queue-panel-header">
       <div><h2>Add a participant</h2><p>Enter their CTFd username. In team mode, only one signup per team is permitted.</p></div>
     </div>
