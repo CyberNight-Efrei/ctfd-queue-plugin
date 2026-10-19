@@ -456,7 +456,7 @@ class QueueService:
             row = QueueEntry.query.filter_by(
                 challenge_id=challenge.id, account_key=account_key
             ).first()
-            if row is None or row.state == "left":
+            if row is None or row.state in ("left", "completed"):
                 raise QueueError("You are not in this queue.")
             if row.account_key.startswith("team:") and row.user_id != user.id:
                 raise QueueError("Another teammate registered this team; only that player can leave the queue.")
