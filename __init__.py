@@ -16,7 +16,7 @@ from CTFd.plugins.challenges import CHALLENGE_CLASSES, CTFdStandardChallenge
 from CTFd.utils.decorators import admins_only
 
 from .api import queue_namespace
-from .models import QueueChallengeModel, QueueEntry, db
+from .models import QueueChallengeModel, QueueEntry, QueueNotification, db
 from .queue_service import QueueError, QueueService
 
 log = logging.getLogger("ctfd.queue_challenge")
@@ -249,6 +249,22 @@ def load(app):
     try:
         with app.app_context():
             db.create_all()
+            # Notifications are a user's durable history, not children of a queue
+            # entry. Detach legacy references so later queue cleanup cannot cascade
+            # delete notifications that their recipients may still want to revisit.
+            detached_count = QueueNotification.query.filter(
+                QueueNotification.queue_entry_id.isnot(None)
+            ).update(
+                {QueueNotification.queue_entry_id: None},
+                synchronize_session=False,
+            )
+            if detached_count:
+                db.session.commit()
+                log.info(
+                    "Detached %s queue notification record(s) from queue entries "
+                    "to preserve notification history",
+                    detached_count,
+                )
     except Exception:
         log.exception("Failed to initialize Queue Challenge database tables")
         raise
@@ -258,7 +274,7 @@ def load(app):
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
     )
-    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261020-private-poll-v2")
+    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261020-history-center-v1")
     register_admin_plugin_menu_bar(
         title="Queues", route="/plugins/ctfd-queue/admin"
     )
@@ -270,6 +286,10 @@ def load(app):
         template_folder="templates",
         url_prefix="/plugins/ctfd-queue",
     )
+
+    @page_blueprint.route("/notifications")
+    def notification_history():
+        return render_template("plugins/queue_challenge/templates/notifications.html")
 
     @page_blueprint.route("/admin")
     @admins_only

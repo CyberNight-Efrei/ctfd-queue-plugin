@@ -51,7 +51,9 @@ Automatic progression checks due queues every few seconds; the configured interv
 
 ## Notifications
 
-Notifications are persisted in CTFd's native notifications table. Live alerts use a separate `queue_notification` event that the plugin filters by recipient user ID before calling CTFd's native toast UI; the challenge name is displayed in bold at the start of each popup. The standard global `notification` event is deliberately not used for private selection alerts. If server-sent events are disabled or temporarily unavailable, the queue status still reflects selection when the challenge view refreshes. The notification targets the actual registered player, including in team mode.
+Queue notifications are stored in the plugin's private `queue_notifications` table and are scoped to each recipient user ID. A **Queue notifications** link in the signed-in player's navigation opens a paginated history, including alerts that have already appeared as popups. History records are deliberately detached from queue entries so they survive round cleanup and participant removal. Records remain available unless the recipient's CTFd account is deleted.
+
+Pending notifications are polled every three seconds while the player is online. The plugin acknowledges a notification only after it successfully invokes the popup alert; if the player is absent, pending records remain in the database and are shown on a later visit. Opening the history page never acknowledges or hides a pending popup. The history endpoint and acknowledgement endpoint both filter by the current user ID, so another player cannot read or acknowledge these private records. The admin action **Send flag to team** creates separate private records for each member of the selected participant's team; ordinary queue notifications target only the queue entry's player.
 
 ## Validation
 

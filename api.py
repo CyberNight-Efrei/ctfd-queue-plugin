@@ -212,11 +212,13 @@ class UserQueueNotifications(Resource):
     @authed_only
     def get(self):
         user = get_current_user()
+        pending_query = QueueNotification.query.filter_by(
+            recipient_user_id=user.id,
+            acknowledged_at=None,
+        )
+        pending_count = pending_query.count()
         notifications = (
-            QueueNotification.query.filter_by(
-                recipient_user_id=user.id,
-                acknowledged_at=None,
-            )
+            pending_query
             .order_by(QueueNotification.id.asc())
             .limit(50)
             .all()
@@ -224,6 +226,7 @@ class UserQueueNotifications(Resource):
         return {
             "success": True,
             "data": {
+                "pending_count": pending_count,
                 "notifications": [
                     {
                         "id": notification.id,
@@ -236,7 +239,57 @@ class UserQueueNotifications(Resource):
                         ),
                     }
                     for notification in notifications
-                ]
+                ],
+            },
+        }
+
+
+@queue_namespace.route("/notifications/history")
+class UserQueueNotificationHistory(Resource):
+    """Return the signed-in user's private notification history, newest first."""
+
+    @authed_only
+    def get(self):
+        user = get_current_user()
+        try:
+            offset = max(0, int(request.args.get("offset", 0)))
+            limit = min(100, max(1, int(request.args.get("limit", 50))))
+        except (TypeError, ValueError):
+            abort(400, "Notification history pagination must use integer values.")
+
+        query = QueueNotification.query.filter_by(recipient_user_id=user.id)
+        total = query.count()
+        pending_count = query.filter_by(acknowledged_at=None).count()
+        notifications = (
+            query.order_by(
+                QueueNotification.created_at.desc(),
+                QueueNotification.id.desc(),
+            )
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return {
+            "success": True,
+            "data": {
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "pending_count": pending_count,
+                "notifications": [
+                    {
+                        "id": notification.id,
+                        "title": notification.title,
+                        "content": notification.content,
+                        "date": (
+                            notification.created_at.isoformat()
+                            if notification.created_at
+                            else None
+                        ),
+                        "acknowledged": notification.acknowledged_at is not None,
+                    }
+                    for notification in notifications
+                ],
             },
         }
 

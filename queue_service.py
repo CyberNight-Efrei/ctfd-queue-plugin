@@ -104,7 +104,9 @@ class QueueService:
         plain_content = str(content).replace("{challenge_name}", challenge_name, 1)
         notification = QueueNotification(
             recipient_user_id=recipient_user_id,
-            queue_entry_id=entry.id,
+            # Keep the history independent of queue-entry lifecycle: selected entries
+            # can be removed on a later round while their notifications remain useful.
+            queue_entry_id=None,
             title=str(title)[:160],
             content=plain_content,
         )

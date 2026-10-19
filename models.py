@@ -98,12 +98,9 @@ class QueueNotification(db.Model):
         nullable=False,
         index=True,
     )
-    queue_entry_id = db.Column(
-        db.Integer,
-        db.ForeignKey("queue_entries.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
+    # Deliberately store no FK to queue_entries: notifications must outlive
+    # the queue entry that originally triggered them.
+    queue_entry_id = db.Column(db.Integer, nullable=True, index=True)
     title = db.Column(db.String(160), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
