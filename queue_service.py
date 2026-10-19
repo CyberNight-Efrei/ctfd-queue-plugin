@@ -765,10 +765,6 @@ class QueueService:
                     .order_by(Users.id.asc())
                     .all()
                 ]
-                # Retain the selected player if a CTFd deployment's user query
-                # does not reflect its team relationship in the expected way.
-                if entry.user_id not in recipients:
-                    recipients.append(entry.user_id)
             else:
                 recipients = [entry.user_id]
 
