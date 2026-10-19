@@ -140,14 +140,15 @@
       drawRefreshTriggered = false;
       return;
     }
-    if (drawRefreshTriggered) return;
+    if (drawRefreshTriggered || drawRefreshTimer !== null) return;
 
     drawRefreshTriggered = true;
     refresh().then(function () {
       if (!liveCounters.automatic) return;
       // The scheduler can be a few seconds behind the visual countdown.
       // Retry until the backend reports the next round/countdown.
-      if (currentCounterValues().nextDrawSeconds <= 0) {
+      if (currentCounterValues().nextDrawSeconds <= 0 && drawRefreshTimer === null) {
+        drawRefreshTriggered = true;
         drawRefreshTimer = window.setTimeout(function () {
           drawRefreshTimer = null;
           drawRefreshTriggered = false;
