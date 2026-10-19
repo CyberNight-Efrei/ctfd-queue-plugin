@@ -220,15 +220,14 @@
 
   function refresh() {
     if (refreshInProgress) return Promise.resolve(false);
+
     refreshInProgress = true;
     var refreshButton = document.getElementById("queue-refresh");
     var refreshStatus = document.getElementById("queue-refresh-status");
-    var originalLabel = refreshButton ? refreshButton.getAttribute("data-idle-label") : "↻ Refresh";
+    var idleLabel = "↻ Refresh";
     if (refreshButton) {
-      if (!refreshButton.getAttribute("data-idle-label")) {
-        refreshButton.setAttribute("data-idle-label", refreshButton.innerHTML);
-        originalLabel = refreshButton.getAttribute("data-idle-label");
-      }
+      idleLabel = refreshButton.getAttribute("data-idle-label") || refreshButton.innerHTML;
+      refreshButton.setAttribute("data-idle-label", idleLabel);
       refreshButton.disabled = true;
       refreshButton.setAttribute("aria-busy", "true");
       refreshButton.innerHTML = '<span aria-hidden="true">↻</span> Refreshing…';
@@ -236,9 +235,43 @@
     if (refreshStatus) refreshStatus.textContent = "Refreshing queue data…";
 
     var stateUrl = base + "/admin/challenges/" + challengeId + "/state?_refresh=" + Date.now();
-    var timeoutId;
+    var timeoutId = null;
+    var controller = typeof window.AbortController === "function"
+      ? new window.AbortController()
+      : null;
+    var request = window.fetch(stateUrl, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: controller ? controller.signal : undefined
+    }).then(function (response) {
+      return response.json().catch(function () {
+        return null;
+      }).then(function (payload) {
+        if (!response.ok || !payload || payload.success !== true || !payload.data) {
+          var message = payload && (payload.message || payload.description || payload.error);
+          if (!message && payload && payload.errors) {
+            message = typeof payload.errors === "string"
+              ? payload.errors
+              : JSON.stringify(payload.errors);
+          }
+          var error = new Error(message || ("Queue refresh failed (HTTP " + response.status + ")."));
+          error.queuePath = stateUrl;
+          error.queueStatus = Number(response.status) || 0;
+          throw error;
+        }
+        return payload.data;
+      });
+    }).catch(function (error) {
+      if (!error.queuePath) error.queuePath = stateUrl;
+      if (!Number.isFinite(Number(error.queueStatus))) error.queueStatus = 0;
+      throw error;
+    });
+
     var timeout = new Promise(function (_, reject) {
       timeoutId = window.setTimeout(function () {
+        if (controller) controller.abort();
         var error = new Error("The queue API did not respond within 15 seconds.");
         error.queuePath = stateUrl;
         error.queueStatus = 0;
@@ -246,44 +279,56 @@
       }, 15000);
     });
 
-    return Promise.race([
-      Promise.resolve().then(function () { return api(stateUrl); }),
-      timeout
-    ])
+    return Promise.race([request, timeout])
       .then(function (state) {
+        if (!state || !state.challenge || !Array.isArray(state.waiting) ||
+            !Array.isArray(state.selected)) {
+          var error = new Error("The queue API returned an invalid state response.");
+          error.queuePath = stateUrl;
+          error.queueStatus = 0;
+          throw error;
+        }
         renderState(state);
-        if (refreshStatus) refreshStatus.textContent = "Last refreshed at " + new Date().toLocaleTimeString();
+        if (refreshStatus) {
+          refreshStatus.textContent = "Last refreshed at " + new Date().toLocaleTimeString();
+        }
         return true;
       })
       .catch(function (error) {
         logApiFailure(error, "admin state refresh");
-        if (refreshStatus) refreshStatus.textContent = "Refresh failed at " + new Date().toLocaleTimeString();
-        showFeedback("Could not refresh queue data: " + error.message, true);
+        if (refreshStatus) {
+          refreshStatus.textContent = "Refresh failed at " + new Date().toLocaleTimeString();
+        }
+        showFeedback("Could not refresh queue data: " + (error.message || "Unknown error"), true);
         return false;
       })
       .then(function (succeeded) {
-        window.clearTimeout(timeoutId);
+        if (timeoutId !== null) window.clearTimeout(timeoutId);
         refreshInProgress = false;
         if (refreshButton) {
           refreshButton.disabled = false;
           refreshButton.removeAttribute("aria-busy");
-          refreshButton.innerHTML = originalLabel;
+          refreshButton.innerHTML = idleLabel;
         }
         return succeeded;
       }, function (error) {
-        window.clearTimeout(timeoutId);
+        // Keep cleanup guaranteed even if an unexpected exception escapes the handlers above.
+        if (timeoutId !== null) window.clearTimeout(timeoutId);
         refreshInProgress = false;
         if (refreshButton) {
           refreshButton.disabled = false;
           refreshButton.removeAttribute("aria-busy");
-          refreshButton.innerHTML = originalLabel;
+          refreshButton.innerHTML = idleLabel;
         }
         logApiFailure(error, "admin state refresh cleanup");
-        if (refreshStatus) refreshStatus.textContent = "Refresh failed at " + new Date().toLocaleTimeString();
+        if (refreshStatus) {
+          refreshStatus.textContent = "Refresh failed at " + new Date().toLocaleTimeString();
+        }
         showFeedback("Could not refresh queue data: " + (error.message || "Unknown error"), true);
         return false;
       });
   }
+
   function runAction(path, method, body, successMessage) {
     return api(path, method, body).then(function (data) {
       if (data && data.challenge && data.waiting) renderState(data);
