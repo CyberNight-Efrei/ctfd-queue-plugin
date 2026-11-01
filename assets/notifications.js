@@ -7,7 +7,10 @@
   var root = typeof window.init.urlRoot === "string" ? window.init.urlRoot : "";
   var base = "/api/v1/plugins/ctfd-queue";
   var pollInProgress = false;
-  var seen = Object.create(null);
+  // Track display and acknowledgement separately. A failed ACK must be retried
+  // without showing the same popup repeatedly in the current tab.
+  var displayed = Object.create(null);
+  var acknowledged = Object.create(null);
   var lastWarningAt = 0;
   var historyLink = null;
 
@@ -45,6 +48,9 @@
     var csrfNonce = window.init && window.init.csrfNonce;
     if (!safeMethod && csrfNonce) {
       options.headers["CSRF-Token"] = csrfNonce;
+    }
+    if (typeof window.fetch !== "function") {
+      return Promise.reject(new Error("This browser does not support fetch()."));
     }
     return window.fetch(requestPath, options);
   }
@@ -185,6 +191,7 @@
     var summary = document.getElementById("queue-notifications-summary");
     var previous = document.getElementById("queue-notifications-previous");
     var next = document.getElementById("queue-notifications-next");
+    var refresh = document.getElementById("queue-notifications-refresh");
     var pageSize = 50;
     var offset = 0;
     var total = 0;
@@ -237,6 +244,7 @@
       if (status) status.textContent = "Loading your queue notification history…";
       if (previous) previous.disabled = true;
       if (next) next.disabled = true;
+      if (refresh) refresh.disabled = true;
 
       api(base + "/notifications/history?limit=" + pageSize + "&offset=" + offset, "GET")
         .then(function (data) {
@@ -253,18 +261,26 @@
           if (status) status.textContent = "";
           if (previous) previous.disabled = offset <= 0;
           if (next) next.disabled = offset + pageSize >= total;
+          if (refresh) refresh.disabled = false;
           updateHistoryLink(pendingCount);
         })
         .catch(function (error) {
+          warn("Could not load queue notification history.", error);
           if (status) status.textContent = "Could not load notification history: " +
             (error && error.message ? error.message : "Unknown error");
           if (summary) summary.textContent = "";
           list.textContent = "";
           if (previous) previous.disabled = offset <= 0;
           if (next) next.disabled = true;
+          if (refresh) refresh.disabled = false;
         });
     }
 
+    if (refresh) {
+      refresh.addEventListener("click", function () {
+        loadPage();
+      });
+    }
     if (previous) {
       previous.addEventListener("click", function () {
         if (offset <= 0) return;
@@ -348,15 +364,20 @@
 
         items.forEach(function (item) {
           var id = Number(item && item.id);
-          if (!Number.isInteger(id) || id <= 0 || seen[id]) return;
+          if (!Number.isInteger(id) || id <= 0 || acknowledged[id]) return;
 
           chain = chain.then(function () {
-            if (seen[id]) return;
-            // Render first, then acknowledge. If rendering fails or the user is offline,
-            // the server keeps this notification pending for a later poll or page load.
-            renderNotification(item);
-            seen[id] = true;
-            return api(base + "/notifications/" + id + "/ack", "POST", {});
+            if (acknowledged[id]) return;
+            // Display at most once per tab, but retry the ACK until the server
+            // confirms it; this avoids duplicate popups after transient failures.
+            if (!displayed[id]) {
+              renderNotification(item);
+              displayed[id] = true;
+            }
+            return api(base + "/notifications/" + id + "/ack", "POST", {})
+              .then(function () {
+                acknowledged[id] = true;
+              });
           }).catch(function (error) {
             warn("Could not acknowledge or render a private queue notification.", error);
           });
