@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-filters-v1">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-tags-ui-v1">
 {% endblock %}
 
 {% block content %}
@@ -107,6 +107,13 @@
           <td data-label="Challenge">
             <div class="queue-challenge-title">{{ item.challenge.name }}</div>
             <div class="text-muted small">ID {{ item.challenge.id }} · {{ item.challenge.category }}</div>
+            {% if item.tags %}
+            <div class="queue-challenge-tags" role="list" aria-label="Challenge tags">
+              {% for tag in item.tags %}
+              <span class="queue-tag-chip" data-tag="{{ tag }}">{{ tag }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
           </td>
           <td data-label="Visibility">
             <span class="queue-badge queue-visibility-badge {{ 'queue-visibility-visible' if visibility == 'visible' else 'queue-visibility-hidden' if visibility == 'hidden' else 'queue-visibility-other' }}">
@@ -141,5 +148,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('plugins.queue_challenge.assets', path='admin-list.js') }}?v=20261101-admin-filters-v1"></script>
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin-list.js') }}?v=20261101-admin-tags-ui-v1"></script>
 {% endblock %}

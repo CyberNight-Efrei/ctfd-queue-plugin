@@ -302,7 +302,12 @@ def load(app):
         for challenge in challenges:
             challenge_tags = []
             for tag in getattr(challenge, "tags", None) or []:
-                value = tag if isinstance(tag, str) else getattr(tag, "tag", None)
+                # CTFd's Tags model stores the visible tag text in its value field.
+                # Keep fallbacks for installations/plugins that expose strings
+                # or custom tag objects instead.
+                value = tag if isinstance(tag, str) else getattr(tag, "value", None)
+                if value is None:
+                    value = getattr(tag, "tag", None)
                 if value is None:
                     value = getattr(tag, "name", None)
                 if value is None:

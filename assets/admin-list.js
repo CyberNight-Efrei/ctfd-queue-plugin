@@ -8,6 +8,26 @@
     root.querySelectorAll(".queue-challenge-row")
   );
 
+  // FNV-1a gives every tag a stable color seed across refreshes and browsers.
+  function colorizeChallengeTags() {
+    root.querySelectorAll(".queue-tag-chip").forEach(function (chip) {
+      var seed = String(chip.dataset.tag || chip.textContent || "")
+        .trim()
+        .toLowerCase();
+      var hash = 2166136261;
+      for (var i = 0; i < seed.length; i++) {
+        hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619);
+      }
+      hash >>>= 0;
+
+      chip.style.setProperty("--queue-tag-hue", hash % 360);
+      chip.style.setProperty("--queue-tag-saturation", (58 + ((hash >>> 9) % 16)) + "%");
+      chip.style.setProperty("--queue-tag-lightness", (91 + ((hash >>> 17) % 6)) + "%");
+    });
+  }
+
+  colorizeChallengeTags();
+
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
