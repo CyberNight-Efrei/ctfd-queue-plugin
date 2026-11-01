@@ -83,6 +83,7 @@
   align-items: center; justify-content: center; border-radius: 8px;
   background: #f1f5f9; color: #334155; font-weight: 750;
 }
+.queue-count-warning { background: #fef3c7; color: #854d0e; }
 .queue-count-selected { background: #dcfce7; color: #166534; }
 .queue-empty-state { padding: 36px 24px; text-align: center; }
 .queue-empty-state h3 { font-size: 19px; font-weight: 750; }
@@ -555,18 +556,24 @@
 
 
 /* Queue challenge admin detail: visible autocomplete and elapsed-clock states */
+.queue-user-autocomplete { position: relative; width: 100%; }
 .queue-user-suggestions {
   position: absolute;
   z-index: 1050;
   left: 0;
   right: 0;
   top: calc(100% + 3px);
-  max-height: 240px;
+  max-height: min(240px, 35vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(100, 116, 139, .35);
   border-radius: 8px;
   background: var(--bs-card-bg, #fff);
   box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+}
+.queue-user-suggestions.queue-user-suggestions-above {
+  top: auto;
+  bottom: calc(100% + 3px);
 }
 .queue-user-suggestions[hidden] { display: none !important; }
 .queue-add-form #queue-add-username-wrap { position: relative; width: 100%; }
