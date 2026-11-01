@@ -2,10 +2,11 @@
 
 {# Follow CTFd-Whale's pattern: keep challenge-specific status inside a full-width card in the description. #}
 {% block description %}
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='queue-ui.css') }}?v=20261101-ui-polish-v1">
 {{ challenge.html }}
 <div class="row text-center pb-3 queue-view-layout">
   <div class="col-12">
-    <div id="queue-plugin-panel" class="card w-100 mb-3" aria-live="polite"
+    <div id="queue-plugin-panel" class="card w-100 mb-3 queue-participant-panel" aria-live="polite"
          data-preview="{{ 'true' if request.path.startswith('/admin/challenges/preview/') else 'false' }}">
       <div class="card-body">
         <h5 class="card-title">Queue status</h5>
@@ -19,52 +20,6 @@
   </div>
 </div>
 
-<style>
-  .queue-view-layout {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-  }
-  .queue-view-layout > .col-12 {
-    width: 100%;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  #queue-plugin-panel {
-    width: 100%;
-    text-align: left;
-  }
-  #queue-details {
-    text-align: center;
-  }
-  .submit-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: .75rem;
-    margin-left: 0;
-    margin-right: 0;
-  }
-  .submit-row > div {
-    width: 100%;
-    max-width: 100%;
-    flex: 0 0 100%;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .submit-row > .key-submit {
-    margin-top: 0 !important;
-  }
-  #queue-action-button,
-  #challenge-submit {
-    display: block;
-    width: 100%;
-    min-height: 42px;
-  }
-  .queue-action-wrap {
-    margin-top: .75rem;
-  }
-</style>
 {% endblock %}
 
 {% block input %}
