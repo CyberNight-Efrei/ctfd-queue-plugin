@@ -28,17 +28,17 @@
     <div class="queue-header-actions">
       <a class="btn btn-outline-secondary" href="{{ url_for('admin.challenges_detail', challenge_id=challenge.id) }}">Edit challenge</a>
       <button class="btn btn-outline-secondary" type="button" id="queue-copy-flag">
-        <span aria-hidden="true">▣</span> Copy flag
+        <<i class="fas fa-flag mr-1" aria-hidden="true"></i> Copy flag
       </button>
       <button class="btn btn-outline-primary" type="button" id="queue-refresh">
-        <span aria-hidden="true">↻</span> Refresh
+        <i class="fas fa-arrow-rotate-left mr-1" aria-hidden="true"></i> Refresh
       </button>
       <label class="queue-auto-refresh-toggle" for="queue-auto-refresh">
         <input type="checkbox" id="queue-auto-refresh">
         <span>Auto refresh every 2 min</span>
       </label>
       <button class="btn btn-primary" type="button" id="queue-advance">
-        <span aria-hidden="true">▶</span> Advance queue
+        <i class="fas fa-play mr-1" aria-hidden="true"></i> Advance queue
       </button>
     </div>
   </div>
