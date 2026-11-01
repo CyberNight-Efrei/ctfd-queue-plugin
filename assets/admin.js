@@ -308,7 +308,7 @@
     mode.className = "queue-badge queue-mode-badge " +
       (automatic ? "queue-mode-automatic" : "queue-mode-manual");
     document.getElementById("queue-batch-size").textContent = challenge.batch_size;
-    document.getElementById("queue-interval").textContent = challenge.interval_seconds + " seconds";
+    document.getElementById("queue-interval").textContent = duration(challenge.interval_seconds);
     renderEntries("queue-selected-rows", state.selected, true);
     renderEntries("queue-waiting-rows", state.waiting, false);
   }
