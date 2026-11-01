@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261019-admin-list-v3">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-filters-v1">
 {% endblock %}
 
 {% block content %}
@@ -56,6 +56,15 @@
         <option value="manual">Manual</option>
       </select>
     </div>
+    <div class="queue-filter-field">
+      <label for="queue-filter-tag">Challenge tag</label>
+      <select id="queue-filter-tag" class="form-control">
+        <option value="all">All tags</option>
+        {% for tag in queue_tags %}
+        <option value="{{ tag|lower|e }}">{{ tag }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <button type="button" id="queue-filter-reset" class="btn btn-outline-secondary">Reset filters</button>
   </div>
 
@@ -89,7 +98,8 @@
             data-challenge-id="{{ item.challenge.id }}"
             data-challenge-name="{{ item.challenge.name|lower }}"
             data-visibility="{{ visibility }}"
-            data-mode="{{ item.challenge.queue_mode }}">
+            data-mode="{{ item.challenge.queue_mode }}"
+            data-tags='{{ item.tags|tojson }}'>
           <td class="queue-checkbox-cell" data-label="Select">
             <input class="queue-challenge-checkbox" type="checkbox" value="{{ item.challenge.id }}"
                    aria-label="Select {{ item.challenge.name|e }}">
@@ -105,8 +115,8 @@
           </td>
           <td data-label="Progression"><span class="queue-badge {{ 'queue-badge-auto' if item.challenge.queue_mode == 'automatic' else 'queue-badge-manual' }}">{{ 'Automatic' if item.challenge.queue_mode == 'automatic' else 'Manual' }}</span></td>
           <td data-label="Batch size">{{ item.challenge.batch_size }} per draw</td>
-          <td data-label="Waiting"><span class="queue-count queue-waiting-count">{{ item.waiting_count }}</span></td>
-          <td data-label="Selected"><span class="queue-count queue-count-selected queue-selected-count">{{ item.selected_count }}</span></td>
+          <td data-label="Waiting"><span class="queue-count queue-waiting-count {{ 'queue-count-warning' if item.waiting_count > 0 else '' }}">{{ item.waiting_count }}</span></td>
+          <td data-label="Selected"><span class="queue-count {{ 'queue-count-selected' if item.selected_count > 0 else '' }} queue-selected-count">{{ item.selected_count }}</span></td>
           <td class="queue-list-actions" data-label="Actions">
             <button class="btn btn-sm btn-primary" type="button" data-action="advance" data-challenge-id="{{ item.challenge.id }}">Advance queue</button>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-action="copy-flag" data-challenge-id="{{ item.challenge.id }}">Copy flag</button>
@@ -131,5 +141,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('plugins.queue_challenge.assets', path='admin-list.js') }}?v=20261019-admin-list-v3"></script>
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin-list.js') }}?v=20261101-admin-filters-v1"></script>
 {% endblock %}

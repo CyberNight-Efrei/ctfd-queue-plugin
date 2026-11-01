@@ -87,8 +87,14 @@
     if (!row || !state) return;
     var waiting = row.querySelector(".queue-waiting-count");
     var selected = row.querySelector(".queue-selected-count");
-    if (waiting && Array.isArray(state.waiting)) waiting.textContent = state.waiting.length;
-    if (selected && Array.isArray(state.selected)) selected.textContent = state.selected.length;
+    if (waiting && Array.isArray(state.waiting)) {
+      waiting.textContent = state.waiting.length;
+      waiting.classList.toggle("queue-count-warning", state.waiting.length > 0);
+    }
+    if (selected && Array.isArray(state.selected)) {
+      selected.textContent = state.selected.length;
+      selected.classList.toggle("queue-count-selected", state.selected.length > 0);
+    }
   }
 
   function updateSummaryCounts() {
@@ -147,11 +153,13 @@
     var nameInput = document.getElementById("queue-filter-name");
     var visibilityInput = document.getElementById("queue-filter-visibility");
     var modeInput = document.getElementById("queue-filter-mode");
-    if (!nameInput || !visibilityInput || !modeInput) return;
+    var tagInput = document.getElementById("queue-filter-tag");
+    if (!nameInput || !visibilityInput || !modeInput || !tagInput) return;
 
     var nameFilter = (nameInput.value || "").trim().toLocaleLowerCase();
     var visibilityFilter = visibilityInput.value;
     var modeFilter = modeInput.value;
+    var tagFilter = tagInput.value;
     var shown = 0;
 
     allRows.forEach(function (row) {
@@ -160,7 +168,18 @@
       var matchesVisibility = visibilityFilter === "all" ||
         row.dataset.visibility === visibilityFilter;
       var matchesMode = modeFilter === "all" || row.dataset.mode === modeFilter;
-      row.hidden = !(matchesName && matchesVisibility && matchesMode);
+      var matchesTag = tagFilter === "all";
+      if (!matchesTag) {
+        try {
+          var tags = JSON.parse(row.dataset.tags || "[]");
+          matchesTag = Array.isArray(tags) && tags.some(function (tag) {
+            return String(tag).toLocaleLowerCase() === tagFilter;
+          });
+        } catch (_) {
+          matchesTag = false;
+        }
+      }
+      row.hidden = !(matchesName && matchesVisibility && matchesMode && matchesTag);
       if (!row.hidden) shown += 1;
     });
 
@@ -169,6 +188,7 @@
     var resultCount = document.getElementById("queue-filter-result-count");
     if (resultCount) resultCount.textContent = shown + " of " + allRows.length + " challenges";
     syncSelectVisible();
+    updateFilterUrl();
   }
 
   function copyUsingFallback(text) {
@@ -298,16 +318,59 @@
   var nameFilter = document.getElementById("queue-filter-name");
   var visibilityFilter = document.getElementById("queue-filter-visibility");
   var modeFilter = document.getElementById("queue-filter-mode");
+  var tagFilter = document.getElementById("queue-filter-tag");
+
+  function restoreFiltersFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    if (nameFilter) nameFilter.value = params.get("name") || "";
+
+    [
+      { input: visibilityFilter, key: "visibility" },
+      { input: modeFilter, key: "mode" },
+      { input: tagFilter, key: "tag" }
+    ].forEach(function (filter) {
+      if (!filter.input) return;
+      var value = params.get(filter.key);
+      var exists = Array.prototype.some.call(filter.input.options, function (option) {
+        return option.value === value;
+      });
+      filter.input.value = exists ? value : "all";
+    });
+  }
+
+  function updateFilterUrl() {
+    var params = new URLSearchParams(window.location.search);
+    var name = nameFilter ? nameFilter.value.trim() : "";
+    var visibility = visibilityFilter ? visibilityFilter.value : "all";
+    var mode = modeFilter ? modeFilter.value : "all";
+    var tag = tagFilter ? tagFilter.value : "all";
+
+    if (name) params.set("name", name);
+    else params.delete("name");
+    if (visibility !== "all") params.set("visibility", visibility);
+    else params.delete("visibility");
+    if (mode !== "all") params.set("mode", mode);
+    else params.delete("mode");
+    if (tag !== "all") params.set("tag", tag);
+    else params.delete("tag");
+
+    var query = params.toString();
+    var url = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
+    window.history.replaceState(window.history.state, "", url);
+  }
+
   if (nameFilter) nameFilter.addEventListener("input", applyFilters);
   if (visibilityFilter) visibilityFilter.addEventListener("change", applyFilters);
   if (modeFilter) modeFilter.addEventListener("change", applyFilters);
+  if (tagFilter) tagFilter.addEventListener("change", applyFilters);
 
   var reset = document.getElementById("queue-filter-reset");
   if (reset) {
     reset.addEventListener("click", function () {
-      nameFilter.value = "";
-      visibilityFilter.value = "all";
-      modeFilter.value = "all";
+      if (nameFilter) nameFilter.value = "";
+      if (visibilityFilter) visibilityFilter.value = "all";
+      if (modeFilter) modeFilter.value = "all";
+      if (tagFilter) tagFilter.value = "all";
       applyFilters();
     });
   }
@@ -344,6 +407,7 @@
     });
   }
 
+  restoreFiltersFromUrl();
   applyFilters();
   updateSelectionUi();
   updateSummaryCounts();
