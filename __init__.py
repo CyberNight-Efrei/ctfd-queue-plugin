@@ -61,7 +61,7 @@ class QueueChallenge(CTFdStandardChallenge):
     scripts = {
         "create": "/plugins/queue_challenge/assets/create.js",
         "update": "/plugins/queue_challenge/assets/update.js",
-        "view": "/plugins/queue_challenge/assets/view.js?v=20261020-selected-button-v1",
+        "view": "/plugins/queue_challenge/assets/view.js?v=20261101-ui-polish-v1",
     }
 
     @classmethod
