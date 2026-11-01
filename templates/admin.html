@@ -2,7 +2,7 @@
 
 {% block stylesheets %}
 <link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-tags-ui-v1">
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='queue-ui.css') }}?v=20261101-actions-align-v1">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='queue-ui.css') }}?v=20261101-actions-column-v2">
 {% endblock %}
 
 {% block content %}
@@ -126,9 +126,11 @@
           <td data-label="Waiting"><span class="queue-count queue-waiting-count {{ 'queue-count-warning' if item.waiting_count > 0 else '' }}">{{ item.waiting_count }}</span></td>
           <td data-label="Selected"><span class="queue-count {{ 'queue-count-selected' if item.selected_count > 0 else '' }} queue-selected-count">{{ item.selected_count }}</span></td>
           <td class="queue-list-actions" data-label="Actions">
-            <button class="btn btn-sm btn-primary" type="button" data-action="advance" data-challenge-id="{{ item.challenge.id }}">Advance queue</button>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-action="copy-flag" data-challenge-id="{{ item.challenge.id }}">Copy flag</button>
-            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage queue <span aria-hidden="true">→</span></a>
+            <div class="queue-list-actions-inner" role="group" aria-label="Actions for {{ item.challenge.name|e }}">
+              <button class="btn btn-primary" type="button" data-action="advance" data-challenge-id="{{ item.challenge.id }}">Advance queue</button>
+              <button class="btn btn-outline-secondary" type="button" data-action="copy-flag" data-challenge-id="{{ item.challenge.id }}">Copy flag</button>
+              <a class="btn btn-outline-primary" href="{{ url_for('queue_challenge.admin_challenge', challenge_id=item.challenge.id) }}">Manage queue <span aria-hidden="true">→</span></a>
+            </div>
           </td>
         </tr>
       {% endfor %}
