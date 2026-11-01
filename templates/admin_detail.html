@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261020-admin-dropdown-v1">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-dropdown-v2">
 {% endblock %}
 
 {% block content %}
@@ -127,11 +127,13 @@
         </select>
         <div id="queue-add-username-wrap">
           <label for="queue-add-username">CTFd username</label>
-          <input class="form-control" id="queue-add-username" name="username" type="text"
-                 autocomplete="off" required aria-autocomplete="list"
-                 aria-controls="queue-user-suggestions" aria-expanded="false"
-                 placeholder="Start typing a username…">
-          <div id="queue-user-suggestions" class="queue-user-suggestions" role="listbox" hidden></div>
+          <div class="queue-user-autocomplete">
+            <input class="form-control" id="queue-add-username" name="username" type="text"
+                   autocomplete="off" required aria-autocomplete="list"
+                   aria-controls="queue-user-suggestions" aria-expanded="false"
+                   placeholder="Start typing a username…">
+            <div id="queue-user-suggestions" class="queue-user-suggestions" role="listbox" hidden></div>
+          </div>
           <small class="text-muted">Start typing to see matching usernames.</small>
         </div>
         <div id="queue-add-user-id-wrap" hidden>
@@ -146,5 +148,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261019-admin-v13"></script>
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261101-admin-autocomplete-v1"></script>
 {% endblock %}
