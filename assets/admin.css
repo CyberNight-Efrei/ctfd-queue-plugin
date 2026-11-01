@@ -617,3 +617,29 @@
 .queue-add-participant-panel .queue-user-suggestions {
   z-index: 1060;
 }
+
+
+/* Compact challenge tags with deterministic per-tag colors (seeded in admin-list.js). */
+.queue-challenge-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.queue-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  padding: 2px 7px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--queue-tag-hue, 210), var(--queue-tag-saturation, 60%), 78%);
+  border-radius: 999px;
+  background: hsl(var(--queue-tag-hue, 210), var(--queue-tag-saturation, 60%), var(--queue-tag-lightness, 93%));
+  color: hsl(var(--queue-tag-hue, 210), var(--queue-tag-saturation, 60%), 29%);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
