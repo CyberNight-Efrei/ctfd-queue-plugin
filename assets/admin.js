@@ -133,8 +133,13 @@
 
   function timeLabel(value) {
     if (!value) return "—";
-    try { return new Date(value + (value.endsWith("Z") ? "" : "Z")).toLocaleString(); }
-    catch (_) { return value; }
+    var timestamp = String(value);
+    try {
+      var date = new Date(timestamp + (timestamp.endsWith("Z") ? "" : "Z"));
+      return Number.isFinite(date.getTime()) ? date.toLocaleString() : timestamp;
+    } catch (_) {
+      return timestamp;
+    }
   }
 
   function duration(seconds) {
@@ -254,7 +259,7 @@
     var target = document.getElementById(targetId);
     if (!target) return;
     if (!entries.length) {
-      target.innerHTML = '<tr><td colspan="' + (isSelected ? "5" : "5") + '" class="queue-empty-row">' +
+      target.innerHTML = '<tr><td colspan="5" class="queue-empty-row">' +
         (isSelected ? "No participants are currently selected." : "The waiting queue is empty.") +
         "</td></tr>";
       return;
@@ -267,17 +272,17 @@
           escapeHtml(entry.round_number || "—") + '</td><td>' + escapeHtml(timeLabel(entry.selected_at)) +
           '</td><td class="queue-row-actions">' +
           (entry.team_id
-            ? '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + entry.id + '">Send flag to team</button>'
+            ? '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + escapeHtml(entry.id) + '">Send flag to team</button>'
             : '<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="This participant is not associated with a team">No team</button>') +
-          '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + entry.id + '">Remove from queue</button>' +
+          '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + escapeHtml(entry.id) + '">Remove from queue</button>' +
           '</td></tr>';
       }
       return '<tr><td><span class="queue-position">' + escapeHtml(entry.position) + "</span>" + (Number(entry.position) === 1 ? ' <span class="queue-badge queue-badge-auto ml-2">Next</span>' : "") + "</td><td>" +
         identity + "</td><td>" + team + "</td><td>" + escapeHtml(timeLabel(entry.joined_at)) +
         '</td><td class="queue-row-actions">' +
-        '<button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="' + entry.id + '" aria-label="Move up">↑</button>' +
-        '<button class="btn btn-sm btn-outline-secondary" data-action="move-down" data-entry-id="' + entry.id + '" aria-label="Move down">↓</button>' +
-        '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + entry.id + '">Remove</button>' +
+        '<button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="' + escapeHtml(entry.id) + '" aria-label="Move up">↑</button>' +
+        '<button class="btn btn-sm btn-outline-secondary" data-action="move-down" data-entry-id="' + escapeHtml(entry.id) + '" aria-label="Move down">↓</button>' +
+        '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + escapeHtml(entry.id) + '">Remove</button>' +
         "</td></tr>";
     }).join("");
   }
@@ -334,7 +339,7 @@
     var controller = typeof window.AbortController === "function"
       ? new window.AbortController()
       : null;
-    var request = window.fetch(stateUrl, {
+    var request = fetchRequest(stateUrl, {
       method: "GET",
       credentials: "same-origin",
       cache: "no-store",
