@@ -541,6 +541,24 @@
   var suggestionTimer = null;
   var suggestionRequestId = 0;
 
+  function positionUsernameSuggestions() {
+    if (!usernameInput || !suggestionList || suggestionList.hidden) return;
+    var inputRect = usernameInput.getBoundingClientRect();
+    var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    var margin = 12;
+    var spaceBelow = Math.max(0, viewportHeight - inputRect.bottom - margin);
+    var spaceAbove = Math.max(0, inputRect.top - margin);
+    var estimatedHeight = Math.min(240, suggestionList.scrollHeight || 240);
+    var openAbove = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+    var availableSpace = openAbove ? spaceAbove : spaceBelow;
+
+    suggestionList.classList.toggle("queue-user-suggestions-above", openAbove);
+    suggestionList.style.maxHeight = Math.max(60, Math.min(240, availableSpace)) + "px";
+  }
+
+  window.addEventListener("resize", positionUsernameSuggestions);
+  window.addEventListener("scroll", positionUsernameSuggestions, true);
+
   function updateLookupMode() {
     var byUsername = !lookupMode || lookupMode.value === "username";
     if (usernameWrap) usernameWrap.hidden = !byUsername;
@@ -564,6 +582,8 @@
     if (!query) {
       suggestionList.innerHTML = "";
       suggestionList.hidden = true;
+      suggestionList.classList.remove("queue-user-suggestions-above");
+      suggestionList.style.maxHeight = "";
       usernameInput.setAttribute("aria-expanded", "false");
       return;
     }
@@ -583,6 +603,7 @@
           }).join("");
           suggestionList.hidden = users.length === 0;
           usernameInput.setAttribute("aria-expanded", users.length > 0 ? "true" : "false");
+          if (users.length > 0) positionUsernameSuggestions();
         })
         .catch(function (error) {
           logApiFailure(error, "username suggestions");
@@ -595,6 +616,8 @@
     if (suggestionList) {
       suggestionList.innerHTML = "";
       suggestionList.hidden = true;
+      suggestionList.classList.remove("queue-user-suggestions-above");
+      suggestionList.style.maxHeight = "";
     }
     if (usernameInput) usernameInput.setAttribute("aria-expanded", "false");
     if (lookupMode.value === "username") fetchUsernameSuggestions();
