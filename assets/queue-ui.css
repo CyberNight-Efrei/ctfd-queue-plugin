@@ -332,6 +332,83 @@
   min-height: 42px;
 }
 
+/* Queue-specific configuration in the native challenge editor */
+.queue-challenge-settings {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid var(--queue-ui-border);
+  border-radius: var(--queue-ui-radius);
+  background: var(--queue-ui-subtle);
+}
+
+.queue-challenge-settings > hr {
+  display: none;
+}
+
+.queue-challenge-settings > h5 {
+  margin: 0 0 8px;
+  color: var(--queue-ui-text);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.queue-challenge-settings > p {
+  max-width: 900px;
+  margin: 0 0 18px;
+  color: var(--queue-ui-muted);
+  line-height: 1.55;
+}
+
+.queue-challenge-settings .form-group {
+  max-width: 680px;
+  margin-bottom: 16px;
+}
+
+.queue-challenge-settings .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.queue-challenge-settings label,
+.queue-challenge-settings .form-check-label {
+  color: var(--queue-ui-text);
+  font-weight: 650;
+}
+
+.queue-challenge-settings .form-control,
+.queue-challenge-settings select {
+  min-height: 42px;
+  border-color: var(--queue-ui-border);
+  border-radius: 8px;
+  color: var(--queue-ui-text);
+}
+
+.queue-challenge-settings .form-control:focus,
+.queue-challenge-settings select:focus {
+  border-color: var(--queue-ui-accent);
+  box-shadow: 0 0 0 3px var(--queue-ui-focus);
+}
+
+.queue-challenge-settings textarea.form-control {
+  min-height: 88px;
+}
+
+.queue-challenge-settings .form-check {
+  margin-bottom: 10px;
+}
+
+.queue-challenge-settings .form-check-input {
+  width: 17px;
+  height: 17px;
+  margin-top: .18em;
+  accent-color: var(--queue-ui-accent);
+}
+
+@media (max-width: 600px) {
+  .queue-challenge-settings {
+    padding: 15px 13px;
+  }
+}
+
 /* Buttons, keyboard focus and feedback */
 .queue-admin-page .btn,
 .queue-notification-page .btn,
@@ -530,7 +607,7 @@
   line-height: 1.55;
 }
 
-.queue-notification-content {
+.queue-notification-page {
   max-width: 1040px;
 }
 
