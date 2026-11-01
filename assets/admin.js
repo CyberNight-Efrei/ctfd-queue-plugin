@@ -272,7 +272,7 @@
           escapeHtml(entry.round_number || "—") + '</td><td>' + escapeHtml(timeLabel(entry.selected_at)) +
           '</td><td class="queue-row-actions">' +
           (entry.team_id
-            ? '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + escapeHtml(entry.id) + '"><i class="fas fa-flag mr-1" aria-hidden="true">Send flag to team</button>'
+            ? '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + escapeHtml(entry.id) + '"><i class="fas fa-flag mr-1" aria-hidden="true"></i>Send flag to team</button>'
             : '<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="This participant is not associated with a team">No team</button>') +
           '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + escapeHtml(entry.id) + '">Remove from queue</button>' +
           '</td></tr>';
