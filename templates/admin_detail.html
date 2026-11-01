@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-dropdown-v2">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-detail-tags-v2">
 {% endblock %}
 
 {% block content %}
@@ -15,6 +15,13 @@
       <a href="{{ url_for('queue_challenge.admin_index') }}" class="queue-back-link">← All queues</a>
       <p class="queue-eyebrow">Challenge ID {{ challenge.id }}</p>
       <h1>{{ challenge.name }}</h1>
+      {% if challenge_tags %}
+      <div class="queue-challenge-tags" role="list" aria-label="Challenge tags">
+        {% for tag in challenge_tags %}
+        <span class="queue-tag-chip" data-tag="{{ tag }}">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
       <p class="text-muted mb-0">Manage the waiting queue and advance rounds.</p>
     </div>
     <div class="queue-header-actions">
@@ -148,5 +155,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261101-admin-autocomplete-v1"></script>
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261101-admin-detail-tags-v2"></script>
 {% endblock %}
