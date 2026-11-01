@@ -228,7 +228,7 @@ CTFd._internal.challenge.submit = function (preview) {
       case "waiting":
         action.textContent = "Leave queue";
         action.classList.add("btn-danger");
-        message.className = "alert alert-danger mb-2";
+        message.className = "alert alert-info mb-2";
         setText(message, "You are registered and waiting for your turn.");
         renderWaitingDetails();
         break;
