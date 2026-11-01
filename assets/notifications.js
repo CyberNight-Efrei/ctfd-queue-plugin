@@ -209,7 +209,7 @@
 
       items.forEach(function (item) {
         var card = document.createElement("article");
-        card.className = "card mb-3";
+        card.className = "card queue-notification-card";
         var body = document.createElement("div");
         body.className = "card-body";
         var headingRow = document.createElement("div");
@@ -218,18 +218,20 @@
         heading.className = "card-title mb-1";
         heading.textContent = item.title || "Queue update";
         var state = document.createElement("span");
-        state.className = item.acknowledged ? "badge badge-secondary ml-2" : "badge badge-warning ml-2";
+        state.className = "queue-notification-state " +
+          (item.acknowledged
+            ? "queue-notification-state-acknowledged"
+            : "queue-notification-state-pending");
         state.textContent = item.acknowledged ? "Alert displayed" : "Waiting for delivery";
         headingRow.appendChild(heading);
         headingRow.appendChild(state);
 
         var date = document.createElement("small");
-        date.className = "d-block text-muted mb-3";
+        date.className = "queue-notification-date";
         date.textContent = formatHistoryDate(item.date);
 
         var content = document.createElement("p");
-        content.className = "card-text mb-0";
-        content.style.whiteSpace = "pre-wrap";
+        content.className = "queue-notification-content";
         content.textContent = item.content || "";
 
         body.appendChild(headingRow);
