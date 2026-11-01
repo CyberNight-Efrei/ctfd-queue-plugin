@@ -93,7 +93,7 @@
     }
 
     // Fallback for custom themes without the standard CTFd language menu.
-    var cookieMatch = document.cookie.match(/(?:^|;\\s*)language=([^;]*)/);
+    var cookieMatch = document.cookie.match(/(?:^|;\s*)language=([^;]*)/);
     if (cookieMatch) {
       try { return decodeURIComponent(cookieMatch[1]).toLowerCase(); }
       catch (_) { return String(cookieMatch[1]).toLowerCase(); }
