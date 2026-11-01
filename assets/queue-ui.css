@@ -804,18 +804,163 @@
   }
 }
 
-/* Challenge list: center action controls and remove the sticky-column shadow. */
+/*
+ * Challenge-list Actions column.
+ * Keep the table cell a real table cell; align the controls inside a dedicated
+ * grid so sticky positioning, row heights and horizontal scrolling stay stable.
+ */
 .queue-list-table th:last-child,
 .queue-list-table td.queue-list-actions {
-  box-shadow: none;
+  width: 360px;
+  min-width: 360px;
+  border-left: 1px solid var(--queue-ui-border);
+  box-shadow: none !important;
 }
 
 .queue-list-table thead th:last-child {
+  padding-right: 14px;
+  padding-left: 14px;
+  background: var(--queue-ui-subtle);
   text-align: center;
+  vertical-align: middle;
 }
 
-@media (min-width: 761px) {
+.queue-list-table td.queue-list-actions {
+  display: table-cell;
+  padding: 12px 14px;
+  background: var(--queue-ui-surface);
+  text-align: center;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.queue-list-table tbody tr:hover > td.queue-list-actions {
+  background: var(--queue-ui-subtle) !important;
+}
+
+.queue-list-actions-inner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: 390px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.queue-list-actions-inner > .btn {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 8px 7px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .055);
+  transform: translateY(0);
+  transition:
+    background-color .16s ease,
+    border-color .16s ease,
+    color .16s ease,
+    box-shadow .16s ease,
+    transform .16s ease;
+}
+
+.queue-list-actions-inner > .btn-primary {
+  border-color: var(--queue-ui-accent);
+  background: var(--queue-ui-accent);
+  color: #fff;
+}
+
+.queue-list-actions-inner > .btn-outline-secondary {
+  border-color: var(--queue-ui-border);
+  background: var(--queue-ui-surface);
+  color: var(--queue-ui-text);
+}
+
+.queue-list-actions-inner > .btn-outline-primary {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.queue-list-actions-inner > .btn-primary:hover:not(:disabled),
+.queue-list-actions-inner > .btn-outline-secondary:hover:not(:disabled),
+.queue-list-actions-inner > .btn-outline-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 10px rgba(15, 23, 42, .14);
+  transform: translateY(-1px);
+}
+
+.queue-list-actions-inner > .btn-primary:hover:not(:disabled) {
+  border-color: var(--queue-ui-accent-hover);
+  background: var(--queue-ui-accent-hover);
+  color: #fff;
+}
+
+.queue-list-actions-inner > .btn-outline-secondary:hover:not(:disabled) {
+  border-color: #aeb9c8;
+  background: var(--queue-ui-subtle);
+  color: var(--queue-ui-text);
+}
+
+.queue-list-actions-inner > .btn-outline-primary:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.queue-list-actions-inner > .btn:active:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .1);
+  transform: translateY(0);
+}
+
+.queue-list-actions-inner > .btn:focus-visible {
+  outline: 3px solid var(--queue-ui-focus);
+  outline-offset: 2px;
+}
+
+.queue-list-actions-inner > .btn:disabled {
+  box-shadow: none;
+  transform: none;
+}
+
+@media (max-width: 760px) {
+  .queue-list-table th:last-child {
+    width: auto;
+    min-width: 0;
+  }
+
   .queue-list-table td.queue-list-actions {
-    justify-content: center;
+    display: flex !important;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+    border-left: 0;
+    background: rgba(100, 116, 139, .045) !important;
+    box-shadow: none !important;
+  }
+
+  .queue-list-actions-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    max-width: none;
+  }
+
+  .queue-list-actions-inner > .btn {
+    min-height: 42px;
+    font-size: 13px;
   }
 }
