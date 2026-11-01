@@ -704,13 +704,26 @@ class QueueService:
         """Send a challenge flag only to the selected participant's team."""
         events = []
         try:
-            entry = QueueEntry.query.filter_by(id=entry_id).with_for_update().first()
+            # All queue mutations acquire the challenge lock before entry locks.
+            # This keeps lock ordering consistent with joins, leaves and draws.
+            initial_entry = QueueEntry.query.filter_by(id=entry_id).first()
+            if initial_entry is None:
+                raise QueueError("Queue entry not found.")
+            challenge = QueueService.get_challenge(
+                initial_entry.challenge_id, lock=True
+            )
+            entry = (
+                QueueEntry.query.filter_by(
+                    id=entry_id, challenge_id=challenge.id
+                )
+                .with_for_update()
+                .first()
+            )
             if entry is None:
                 raise QueueError("Queue entry not found.")
             if entry.state != "selected":
                 raise QueueError("The participant must be currently selected to notify the flag.")
 
-            challenge = QueueService.get_challenge(entry.challenge_id, lock=True)
             if QueueService.has_solved_challenge(challenge, entry.user):
                 raise QueueError("The selected player's team has already solved this challenge.")
 
@@ -768,12 +781,24 @@ class QueueService:
             raise QueueError("Direction must be 'up' or 'down'.")
         events = []
         try:
-            row = QueueEntry.query.filter_by(id=entry_id).with_for_update().first()
+            initial_row = QueueEntry.query.filter_by(id=entry_id).first()
+            if initial_row is None:
+                raise QueueError("Queue entry not found.")
+            challenge = QueueService.get_challenge(
+                initial_row.challenge_id, lock=True
+            )
+            row = (
+                QueueEntry.query.filter_by(
+                    id=entry_id, challenge_id=challenge.id
+                )
+                .with_for_update()
+                .first()
+            )
             if row is None:
                 raise QueueError("Queue entry not found.")
             if row.state != "waiting":
                 raise QueueError("Only waiting participants can be reordered.")
-            waiting = QueueService.waiting_entries(row.challenge_id)
+            waiting = QueueService.waiting_entries(challenge.id)
             index = next(i for i, entry in enumerate(waiting) if entry.id == row.id)
             other_index = index - 1 if direction == "up" else index + 1
             if 0 <= other_index < len(waiting):
@@ -804,10 +829,22 @@ class QueueService:
     def remove_entry(entry_id):
         events = []
         try:
-            row = QueueEntry.query.filter_by(id=entry_id).with_for_update().first()
+            initial_row = QueueEntry.query.filter_by(id=entry_id).first()
+            if initial_row is None:
+                raise QueueError("Queue entry not found.")
+            challenge = QueueService.get_challenge(
+                initial_row.challenge_id, lock=True
+            )
+            row = (
+                QueueEntry.query.filter_by(
+                    id=entry_id, challenge_id=challenge.id
+                )
+                .with_for_update()
+                .first()
+            )
             if row is None:
                 raise QueueError("Queue entry not found.")
-            challenge_id = row.challenge_id
+            challenge_id = challenge.id
             row.state = "left"
             row.left_at = _utcnow()
             QueueService._resequence(challenge_id)

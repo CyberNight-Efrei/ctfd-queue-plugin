@@ -20,7 +20,7 @@ The plugin directory must use a valid Python package name. Use the directory nam
 
 From the root of your CTFd installation:
 
-    git clone --branch feat/queue-challenge https://github.com/CyberNight-Efrei/ctfd-queue-plugin.git plugins/queue_challenge
+    git clone --branch main https://github.com/CyberNight-Efrei/ctfd-queue-plugin.git plugins/queue_challenge
 
 Restart all CTFd web workers after installing or updating the plugin. On startup, the plugin registers the challenge type and creates its database tables through SQLAlchemy.
 
@@ -57,6 +57,8 @@ Pending notifications are polled every three seconds while the player is online.
 
 ## Validation
 
-The GitHub Actions workflow checks Python and JavaScript syntax. Before using this plugin in a live competition, test it inside a disposable CTFd deployment with the same CTFd version and database engine you use in production. Verify challenge creation/update, native scoring, users and teams mode, duplicate registration, manual and automatic draws, re-entry after administrator removal, rejection of re-entry after a solve, removal of previous selections on the next iteration, reorder/add/remove actions, and notification delivery. Confirm that CTFd team-solving logic behaves as configured.
+The GitHub Actions workflow checks Python syntax and lint, runs unit tests for queue configuration validation, parses the Jinja templates, and checks JavaScript syntax. The automated tests do not replace a live CTFd integration test.
+
+Before using this plugin in a live competition, test it inside a disposable CTFd deployment with the same CTFd version and database engine you use in production. Verify challenge creation/update, native scoring, users and teams mode, duplicate registration, manual and automatic draws, re-entry after administrator removal, rejection of re-entry after a solve, removal of previous selections on the next iteration, reorder/add/remove actions, and notification delivery. Confirm that CTFd team-solving logic behaves as configured.
 
 The implementation is aligned with CTFd's current challenge plugin APIs, but a live CTFd-plus-database integration run is still required before production use.

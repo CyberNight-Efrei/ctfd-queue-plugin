@@ -5,6 +5,7 @@ import threading
 import time
 
 from flask import Blueprint, abort, render_template
+from sqlalchemy import func
 
 from CTFd.api import CTFd_API_v1
 from CTFd.plugins import (
@@ -19,6 +20,7 @@ from CTFd.utils.user import get_locale
 from .api import queue_namespace
 from .models import QueueChallengeModel, QueueEntry, QueueNotification, db
 from .queue_service import QueueError, QueueService
+from .validation import normalize_queue_fields
 
 log = logging.getLogger("ctfd.queue_challenge")
 _scheduler_lock_handle = None
@@ -59,74 +61,13 @@ class QueueChallenge(CTFdStandardChallenge):
     scripts = {
         "create": "/plugins/queue_challenge/assets/create.js",
         "update": "/plugins/queue_challenge/assets/update.js",
-        "view": "/plugins/queue_challenge/assets/view.js?v=20261020-selected-button-v1",
+        "view": "/plugins/queue_challenge/assets/view.js?v=20261101-ui-polish-v1",
     }
 
     @classmethod
     def _normalise_queue_fields(cls, data, error_type, partial=False):
-        # CTFd's dynamic form serialization can include a control with an empty
-        # name. SQLAlchemy's declarative constructor rejects that as an unknown
-        # model keyword (TypeError: '' is an invalid keyword argument).
-        # Empty/whitespace field names do not represent challenge properties.
-        result = {
-            key: value
-            for key, value in dict(data).items()
-            if isinstance(key, str) and key.strip()
-        }
-        allowed_modes = {"manual", "automatic"}
-
-        if not partial or "queue_mode" in result:
-            mode = str(result.get("queue_mode", "manual")).strip().lower()
-            if mode not in allowed_modes:
-                raise error_type("Queue mode must be manual or automatic.")
-            result["queue_mode"] = mode
-
-        if not partial or "function" in result:
-            scoring_function = str(result.get("function", "static")).strip().lower()
-            if scoring_function not in ("static", "linear", "logarithmic"):
-                raise error_type(
-                    "Scoring function must be static, linear or logarithmic."
-                )
-            result["function"] = scoring_function
-
-        for key, default, minimum, maximum in (
-            ("batch_size", 1, 1, 1000),
-            ("interval_seconds", 900, 1, 86400),
-        ):
-            if not partial or key in result:
-                try:
-                    value = int(result.get(key, default))
-                except (TypeError, ValueError) as exc:
-                    raise error_type("{} must be an integer.".format(key)) from exc
-                if not minimum <= value <= maximum:
-                    raise error_type(
-                        "{} must be between {} and {}.".format(key, minimum, maximum)
-                    )
-                result[key] = value
-
-        for key, default in (("show_position", True), ("show_eta", True)):
-            if not partial or key in result:
-                value = result.get(key, default)
-                if isinstance(value, bool):
-                    result[key] = value
-                else:
-                    result[key] = str(value).strip().lower() in (
-                        "1", "true", "yes", "on"
-                    )
-
-        if not partial or "selected_message" in result:
-            message = str(
-                result.get(
-                    "selected_message",
-                    "You have been selected! You may now attempt this challenge.",
-                )
-                or ""
-            )
-            if len(message) > 4000:
-                raise error_type("The selected-participant message must be 4000 characters or fewer.")
-            result["selected_message"] = message
-
-        return result
+        """Keep CTFd's challenge API contract while delegating validation."""
+        return normalize_queue_fields(data, error_type, partial=partial)
 
     @classmethod
     def create(cls, request):
@@ -210,10 +151,12 @@ class QueueChallenge(CTFdStandardChallenge):
     def delete(cls, challenge):
         challenge_id = challenge.id
         try:
+            # Keep queue-entry cleanup in the same transaction as CTFd's
+            # challenge deletion. The parent implementation commits the
+            # complete challenge deletion after removing its native resources.
             QueueEntry.query.filter_by(challenge_id=challenge_id).delete(
                 synchronize_session=False
             )
-            db.session.commit()
             result = super().delete(challenge)
             log.info("Queue challenge deleted challenge_id=%s", challenge_id)
             return result
@@ -225,7 +168,14 @@ class QueueChallenge(CTFdStandardChallenge):
 
 
 def _automatic_worker(app):
-    tick = max(1, int(app.config.get("QUEUE_CHALLENGE_TICK_SECONDS", 5)))
+    try:
+        tick = int(app.config.get("QUEUE_CHALLENGE_TICK_SECONDS", 5))
+    except (TypeError, ValueError):
+        log.warning(
+            "Invalid QUEUE_CHALLENGE_TICK_SECONDS value; falling back to 5 seconds"
+        )
+        tick = 5
+    tick = max(1, tick)
     while True:
         time.sleep(tick)
         try:
@@ -295,7 +245,7 @@ def load(app):
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
     )
-    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261101-history-localized-v1")
+    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261101-hardening-v2")
     register_admin_plugin_menu_bar(
         title="Queues", route="/plugins/ctfd-queue/admin"
     )
@@ -324,6 +274,21 @@ def load(app):
         challenges = (
             QueueChallengeModel.query.order_by(QueueChallengeModel.id.desc()).all()
         )
+        queue_counts = (
+            db.session.query(
+                QueueEntry.challenge_id,
+                QueueEntry.state,
+                func.count(QueueEntry.id),
+            )
+            .filter(QueueEntry.state.in_(("waiting", "selected")))
+            .group_by(QueueEntry.challenge_id, QueueEntry.state)
+            .all()
+        )
+        counts_by_challenge = {
+            (challenge_id, state): count
+            for challenge_id, state, count in queue_counts
+        }
+
         overview = []
         available_tags = {}
         for challenge in challenges:
@@ -335,12 +300,12 @@ def load(app):
                 {
                     "challenge": challenge,
                     "tags": challenge_tags,
-                    "waiting_count": QueueEntry.query.filter_by(
-                        challenge_id=challenge.id, state="waiting"
-                    ).count(),
-                    "selected_count": QueueEntry.query.filter_by(
-                        challenge_id=challenge.id, state="selected"
-                    ).count(),
+                    "waiting_count": counts_by_challenge.get(
+                        (challenge.id, "waiting"), 0
+                    ),
+                    "selected_count": counts_by_challenge.get(
+                        (challenge.id, "selected"), 0
+                    ),
                 }
             )
         return render_template(

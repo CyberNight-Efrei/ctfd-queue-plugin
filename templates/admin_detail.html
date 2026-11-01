@@ -2,6 +2,7 @@
 
 {% block stylesheets %}
 <link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='admin.css') }}?v=20261101-admin-interval-hhmmss-v1">
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='queue-ui.css') }}?v=20261101-ui-polish-v1">
 {% endblock %}
 
 {% block content %}
@@ -65,7 +66,7 @@
       <div><h2>Selected participants</h2><p>Participants selected for the current round.</p></div>
       <span class="queue-badge queue-badge-selected">Selected</span>
     </div>
-    <div class="table-responsive">
+    <div class="table-responsive" role="region" aria-label="Selected participants" tabindex="0">
       <table class="table queue-table">
         <thead><tr><th>Participant</th><th>Team</th><th>Round</th><th>Selected at</th><th></th></tr></thead>
         <tbody id="queue-selected-rows">
@@ -97,7 +98,7 @@
       <div><h2>Waiting queue</h2><p>Use the arrows to change the order. The top participant is next in line.</p></div>
       <span class="queue-badge queue-badge-manual">FIFO queue</span>
     </div>
-    <div class="table-responsive">
+    <div class="table-responsive" role="region" aria-label="Waiting queue" tabindex="0">
       <table class="table queue-table">
         <thead><tr><th>Position</th><th>Participant</th><th>Team</th><th>Joined at</th><th>Reorder / remove</th></tr></thead>
         <tbody id="queue-waiting-rows">
@@ -155,5 +156,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261101-admin-detail-tags-v2"></script>
+<script src="{{ url_for('plugins.queue_challenge.assets', path='admin.js') }}?v=20261101-hardening-v2"></script>
 {% endblock %}

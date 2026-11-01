@@ -1,25 +1,30 @@
 {% extends "base.html" %}
 
+{% block stylesheets %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('plugins.queue_challenge.assets', path='queue-ui.css') }}?v=20261101-ui-polish-v1">
+{% endblock %}
+
 {% block content %}
-<div class="jumbotron">
+<div class="jumbotron queue-notification-hero">
   <div class="container">
     <h1>{{ notification_page_title }}</h1>
     <p class="mb-0">A private history of queue updates and selection alerts sent to your account.</p>
   </div>
 </div>
 
-<div class="container py-4" id="queue-notifications-page">
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+<div class="container py-4 queue-notification-page" id="queue-notifications-page">
+  <div class="queue-notification-toolbar">
     <div>
       <h2 class="h4 mb-1">Notification history</h2>
       <p id="queue-notifications-summary" class="text-muted mb-0">Loading…</p>
     </div>
     <button class="btn btn-outline-secondary mt-2 mt-md-0" type="button"
-            onclick="window.location.reload()">Refresh</button>
+            id="queue-notifications-refresh">Refresh</button>
   </div>
   <div id="queue-notifications-status" class="text-danger mb-3" role="status" aria-live="polite"></div>
   <div id="queue-notifications-list" aria-live="polite"></div>
-  <div class="d-flex justify-content-between align-items-center mt-3 mb-5">
+  <div class="queue-notification-pagination">
     <button class="btn btn-outline-primary" type="button" id="queue-notifications-previous" disabled>Previous</button>
     <button class="btn btn-outline-primary" type="button" id="queue-notifications-next" disabled>Next</button>
   </div>
