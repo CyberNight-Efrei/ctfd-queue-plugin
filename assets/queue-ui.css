@@ -13,7 +13,7 @@
   --queue-ui-subtle: var(--bs-tertiary-bg, #f5f7fa);
   --queue-ui-border: var(--bs-border-color, #d7dee8);
   --queue-ui-focus: rgba(37, 99, 235, .28);
-  --queue-ui-radius: .25rem;
+  --queue-ui-radius: var(--bs-border-radius, .375rem);
   --queue-ui-shadow: 0 5px 18px rgba(15, 23, 42, .055);
 }
 
@@ -414,7 +414,7 @@
 .queue-notification-page .btn,
 #queue-plugin-panel .btn {
   min-height: 38px;
-  border-radius: var(--queue-ui-radius);
+  border-radius: var(--bs-btn-border-radius, var(--queue-ui-radius));
   font-weight: 650;
   line-height: 1.25;
   transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease, transform .14s ease;
@@ -859,8 +859,8 @@
   margin: 0;
   padding: 8px 7px;
   border: 1px solid transparent;
-  /* Match CTFd/Bootstrap's standard compact button radius. */
-  border-radius: var(--queue-ui-radius);
+  /* Respect CTFd/Bootstrap's own button radius, including theme overrides. */
+  border-radius: var(--bs-btn-border-radius, var(--queue-ui-radius));
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
