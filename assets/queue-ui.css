@@ -803,3 +803,19 @@
     transition: none;
   }
 }
+
+/* Challenge list: center action controls and remove the sticky-column shadow. */
+.queue-list-table th:last-child,
+.queue-list-table td.queue-list-actions {
+  box-shadow: none;
+}
+
+.queue-list-table thead th:last-child {
+  text-align: center;
+}
+
+@media (min-width: 761px) {
+  .queue-list-table td.queue-list-actions {
+    justify-content: center;
+  }
+}
