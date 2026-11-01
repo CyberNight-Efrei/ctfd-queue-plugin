@@ -298,10 +298,27 @@ def load(app):
             QueueChallengeModel.query.order_by(QueueChallengeModel.id.desc()).all()
         )
         overview = []
+        available_tags = {}
         for challenge in challenges:
+            challenge_tags = []
+            for tag in getattr(challenge, "tags", None) or []:
+                value = tag if isinstance(tag, str) else getattr(tag, "tag", None)
+                if value is None:
+                    value = getattr(tag, "name", None)
+                if value is None:
+                    continue
+                value = str(value).strip()
+                if value:
+                    challenge_tags.append(value)
+
+            challenge_tags = sorted(set(challenge_tags), key=str.casefold)
+            for tag in challenge_tags:
+                available_tags.setdefault(tag.casefold(), tag)
+
             overview.append(
                 {
                     "challenge": challenge,
+                    "tags": challenge_tags,
                     "waiting_count": QueueEntry.query.filter_by(
                         challenge_id=challenge.id, state="waiting"
                     ).count(),
@@ -313,6 +330,7 @@ def load(app):
         return render_template(
             "plugins/queue_challenge/templates/admin.html",
             queue_challenges=overview,
+            queue_tags=sorted(available_tags.values(), key=str.casefold),
         )
 
     @page_blueprint.route("/admin/<int:challenge_id>")
