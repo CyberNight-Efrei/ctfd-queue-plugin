@@ -5,6 +5,7 @@ import threading
 import time
 
 from flask import Blueprint, abort, render_template
+from sqlalchemy import func
 
 from CTFd.api import CTFd_API_v1
 from CTFd.plugins import (
@@ -210,10 +211,12 @@ class QueueChallenge(CTFdStandardChallenge):
     def delete(cls, challenge):
         challenge_id = challenge.id
         try:
+            # Keep queue-entry cleanup in the same transaction as CTFd's
+            # challenge deletion. The parent implementation commits the
+            # complete challenge deletion after removing its native resources.
             QueueEntry.query.filter_by(challenge_id=challenge_id).delete(
                 synchronize_session=False
             )
-            db.session.commit()
             result = super().delete(challenge)
             log.info("Queue challenge deleted challenge_id=%s", challenge_id)
             return result
@@ -225,7 +228,14 @@ class QueueChallenge(CTFdStandardChallenge):
 
 
 def _automatic_worker(app):
-    tick = max(1, int(app.config.get("QUEUE_CHALLENGE_TICK_SECONDS", 5)))
+    try:
+        tick = int(app.config.get("QUEUE_CHALLENGE_TICK_SECONDS", 5))
+    except (TypeError, ValueError):
+        log.warning(
+            "Invalid QUEUE_CHALLENGE_TICK_SECONDS value; falling back to 5 seconds"
+        )
+        tick = 5
+    tick = max(1, tick)
     while True:
         time.sleep(tick)
         try:
@@ -324,6 +334,21 @@ def load(app):
         challenges = (
             QueueChallengeModel.query.order_by(QueueChallengeModel.id.desc()).all()
         )
+        queue_counts = (
+            db.session.query(
+                QueueEntry.challenge_id,
+                QueueEntry.state,
+                func.count(QueueEntry.id),
+            )
+            .filter(QueueEntry.state.in_(("waiting", "selected")))
+            .group_by(QueueEntry.challenge_id, QueueEntry.state)
+            .all()
+        )
+        counts_by_challenge = {
+            (challenge_id, state): count
+            for challenge_id, state, count in queue_counts
+        }
+
         overview = []
         available_tags = {}
         for challenge in challenges:
@@ -335,12 +360,12 @@ def load(app):
                 {
                     "challenge": challenge,
                     "tags": challenge_tags,
-                    "waiting_count": QueueEntry.query.filter_by(
-                        challenge_id=challenge.id, state="waiting"
-                    ).count(),
-                    "selected_count": QueueEntry.query.filter_by(
-                        challenge_id=challenge.id, state="selected"
-                    ).count(),
+                    "waiting_count": counts_by_challenge.get(
+                        (challenge.id, "waiting"), 0
+                    ),
+                    "selected_count": counts_by_challenge.get(
+                        (challenge.id, "selected"), 0
+                    ),
                 }
             )
         return render_template(
