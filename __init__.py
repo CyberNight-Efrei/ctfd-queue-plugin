@@ -20,6 +20,7 @@ from CTFd.utils.user import get_locale
 from .api import queue_namespace
 from .models import QueueChallengeModel, QueueEntry, QueueNotification, db
 from .queue_service import QueueError, QueueService
+from .validation import normalize_queue_fields
 
 log = logging.getLogger("ctfd.queue_challenge")
 _scheduler_lock_handle = None
@@ -65,69 +66,8 @@ class QueueChallenge(CTFdStandardChallenge):
 
     @classmethod
     def _normalise_queue_fields(cls, data, error_type, partial=False):
-        # CTFd's dynamic form serialization can include a control with an empty
-        # name. SQLAlchemy's declarative constructor rejects that as an unknown
-        # model keyword (TypeError: '' is an invalid keyword argument).
-        # Empty/whitespace field names do not represent challenge properties.
-        result = {
-            key: value
-            for key, value in dict(data).items()
-            if isinstance(key, str) and key.strip()
-        }
-        allowed_modes = {"manual", "automatic"}
-
-        if not partial or "queue_mode" in result:
-            mode = str(result.get("queue_mode", "manual")).strip().lower()
-            if mode not in allowed_modes:
-                raise error_type("Queue mode must be manual or automatic.")
-            result["queue_mode"] = mode
-
-        if not partial or "function" in result:
-            scoring_function = str(result.get("function", "static")).strip().lower()
-            if scoring_function not in ("static", "linear", "logarithmic"):
-                raise error_type(
-                    "Scoring function must be static, linear or logarithmic."
-                )
-            result["function"] = scoring_function
-
-        for key, default, minimum, maximum in (
-            ("batch_size", 1, 1, 1000),
-            ("interval_seconds", 900, 1, 86400),
-        ):
-            if not partial or key in result:
-                try:
-                    value = int(result.get(key, default))
-                except (TypeError, ValueError) as exc:
-                    raise error_type("{} must be an integer.".format(key)) from exc
-                if not minimum <= value <= maximum:
-                    raise error_type(
-                        "{} must be between {} and {}.".format(key, minimum, maximum)
-                    )
-                result[key] = value
-
-        for key, default in (("show_position", True), ("show_eta", True)):
-            if not partial or key in result:
-                value = result.get(key, default)
-                if isinstance(value, bool):
-                    result[key] = value
-                else:
-                    result[key] = str(value).strip().lower() in (
-                        "1", "true", "yes", "on"
-                    )
-
-        if not partial or "selected_message" in result:
-            message = str(
-                result.get(
-                    "selected_message",
-                    "You have been selected! You may now attempt this challenge.",
-                )
-                or ""
-            )
-            if len(message) > 4000:
-                raise error_type("The selected-participant message must be 4000 characters or fewer.")
-            result["selected_message"] = message
-
-        return result
+        """Keep CTFd's challenge API contract while delegating validation."""
+        return normalize_queue_fields(data, error_type, partial=partial)
 
     @classmethod
     def create(cls, request):
