@@ -30,6 +30,16 @@ def _current_user_id():
         return None
 
 
+def _json_object():
+    """Return a JSON object body, rejecting arrays and scalar payloads."""
+    data = request.get_json(silent=True)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        abort(400, "The request body must be a JSON object.")
+    return data
+
+
 def _challenge_for_user(challenge_id):
     try:
         challenge = QueueService.get_challenge(challenge_id)
@@ -75,19 +85,43 @@ def _challenge_for_user(challenge_id):
 
         if challenge.requirements:
             try:
-                requirements = challenge.requirements.get("prerequisites", [])
-                solve_rows = (
-                    Solves.query.with_entities(Solves.challenge_id)
-                    .filter_by(account_id=user.account_id)
-                    .all()
+                raw_requirements = (
+                    challenge.requirements.get("prerequisites", []) or []
                 )
-                solved_ids = {required_id for (required_id,) in solve_rows}
-                all_ids = {
-                    row.id
-                    for row in Challenges.query.with_entities(Challenges.id).all()
+                if not isinstance(raw_requirements, (list, tuple, set)):
+                    raise ValueError("Challenge prerequisites must be a list.")
+
+                # Normalize IDs from JSON and query only the referenced
+                # challenges instead of loading every challenge and solve.
+                prerequisite_ids = {int(item) for item in raw_requirements}
+                prerequisite_ids = {
+                    item for item in prerequisite_ids if item > 0
                 }
-                prerequisites = set(requirements).intersection(all_ids)
-                prerequisites_satisfied = solved_ids >= prerequisites
+                valid_prerequisites = set()
+                if prerequisite_ids:
+                    valid_prerequisites = {
+                        challenge_id
+                        for (challenge_id,) in Challenges.query.with_entities(
+                            Challenges.id
+                        )
+                        .filter(Challenges.id.in_(prerequisite_ids))
+                        .all()
+                    }
+
+                solved_prerequisites = set()
+                if valid_prerequisites:
+                    solved_prerequisites = {
+                        challenge_id
+                        for (challenge_id,) in Solves.query.with_entities(
+                            Solves.challenge_id
+                        )
+                        .filter_by(account_id=user.account_id)
+                        .filter(Solves.challenge_id.in_(valid_prerequisites))
+                        .all()
+                    }
+                prerequisites_satisfied = (
+                    solved_prerequisites >= valid_prerequisites
+                )
             except Exception:
                 log.exception(
                     "Failed to evaluate queue challenge prerequisites "
@@ -254,6 +288,8 @@ class UserQueueNotificationHistory(Resource):
         try:
             offset = max(0, int(request.args.get("offset", 0)))
             limit = min(100, max(1, int(request.args.get("limit", 50))))
+            if offset > 1000000:
+                abort(400, "Notification history offset is too large.")
         except (TypeError, ValueError):
             abort(400, "Notification history pagination must use integer values.")
 
@@ -307,8 +343,20 @@ class UserQueueNotificationAcknowledge(Resource):
             abort(404, "Queue notification not found.")
 
         if notification.acknowledged_at is None:
-            notification.acknowledged_at = datetime.utcnow()
-            db.session.commit()
+            try:
+                notification.acknowledged_at = datetime.utcnow()
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                log.exception(
+                    "Failed to acknowledge queue notification notification_id=%s user_id=%s",
+                    notification_id,
+                    user.id,
+                )
+                abort(
+                    500,
+                    "The notification could not be acknowledged. Check CTFd server logs.",
+                )
 
         return {"success": True, "data": {"id": notification.id}}
 
@@ -349,11 +397,21 @@ class AdminQueueUserSuggestions(Resource):
         query = str(request.args.get("q") or "").strip()
         if not query:
             return {"success": True, "data": {"users": []}}
+        if len(query) > 80:
+            abort(400, "Username search must be 80 characters or fewer.")
+
+        # Escape LIKE metacharacters so autocomplete remains a literal prefix
+        # search and cannot be broadened with user-supplied wildcards.
+        escaped_query = (
+            query.replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
 
         # Return only a small prefix-matched result set for the administrator's
         # autocomplete field; do not expose a full user directory to the page.
         users = (
-            Users.query.filter(Users.name.ilike(query + "%"))
+            Users.query.filter(Users.name.ilike(escaped_query + "%", escape="\\"))
             .order_by(Users.name.asc())
             .limit(15)
             .all()
@@ -440,22 +498,32 @@ class AdminQueueAdd(Resource):
     @admins_only
     def post(self, challenge_id):
         challenge = _admin_challenge(challenge_id)
-        data = request.get_json(silent=True) or {}
-        username = str(data.get("username") or "").strip()
+        data = _json_object()
+        raw_username = data.get("username")
+        if raw_username is not None and not isinstance(raw_username, str):
+            abort(400, "Username must be a string.")
+        username = (raw_username or "").strip()
+        if len(username) > 128:
+            abort(400, "Username must be 128 characters or fewer.")
         if username:
             user = Users.query.filter_by(name=username).first()
             if user is None:
                 log.info(
-                    "Admin queue add requested unknown username challenge_id=%s username=%s admin_user_id=%s",
+                    "Admin queue add requested an unknown username "
+                    "challenge_id=%s admin_user_id=%s",
                     challenge_id,
-                    username,
                     _current_user_id(),
                 )
                 abort(400, "No CTFd user found with that username.")
             user_id = user.id
         else:
             try:
-                user_id = int(data.get("user_id"))
+                raw_user_id = data.get("user_id")
+                if isinstance(raw_user_id, bool):
+                    raise ValueError("user_id must be an integer")
+                if isinstance(raw_user_id, float) and not raw_user_id.is_integer():
+                    raise ValueError("user_id must be an integer")
+                user_id = int(raw_user_id)
                 if user_id < 1:
                     raise ValueError("user_id must be positive")
             except (TypeError, ValueError):
@@ -476,8 +544,9 @@ class AdminQueueAdd(Resource):
 class AdminQueueMove(Resource):
     @admins_only
     def post(self, entry_id):
-        data = request.get_json(silent=True) or {}
-        direction = str(data.get("direction", "")).lower()
+        data = _json_object()
+        raw_direction = data.get("direction", "")
+        direction = raw_direction.strip().lower() if isinstance(raw_direction, str) else ""
         return _run_queue_operation(
             lambda: QueueService.move_entry(entry_id, direction),
             operation="admin_move_entry",
