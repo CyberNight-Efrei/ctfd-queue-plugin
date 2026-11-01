@@ -14,6 +14,7 @@ from CTFd.plugins import (
 )
 from CTFd.plugins.challenges import CHALLENGE_CLASSES, CTFdStandardChallenge
 from CTFd.utils.decorators import admins_only
+from CTFd.utils.user import get_locale
 
 from .api import queue_namespace
 from .models import QueueChallengeModel, QueueEntry, QueueNotification, db
@@ -294,7 +295,7 @@ def load(app):
     register_plugin_assets_directory(
         app, base_path="/plugins/queue_challenge/assets/"
     )
-    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261020-history-center-v1")
+    register_plugin_script("/plugins/queue_challenge/assets/notifications.js?v=20261101-history-localized-v1")
     register_admin_plugin_menu_bar(
         title="Queues", route="/plugins/ctfd-queue/admin"
     )
@@ -309,7 +310,13 @@ def load(app):
 
     @page_blueprint.route("/notifications")
     def notification_history():
-        return render_template("plugins/queue_challenge/templates/notifications.html")
+        locale = str(get_locale() or "en").lower()
+        page_title = "Notif. Fil" if locale.startswith("fr") else "Queue Notif."
+        return render_template(
+            "plugins/queue_challenge/templates/notifications.html",
+            title=page_title,
+            notification_page_title=page_title,
+        )
 
     @page_blueprint.route("/admin")
     @admins_only

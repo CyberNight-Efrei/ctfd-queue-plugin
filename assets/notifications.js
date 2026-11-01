@@ -83,10 +83,49 @@
     return root.replace(/\/+$/, "") + "/plugins/ctfd-queue/notifications";
   }
 
+  function currentLocale() {
+    // CTFd marks the currently selected language in its navbar language menu.
+    var selectedLanguage = document.querySelector(
+      'form[x-data="LanguageForm"] .dropdown-item.bg-primary[value]'
+    );
+    if (selectedLanguage) {
+      return String(selectedLanguage.getAttribute("value") || "").toLowerCase();
+    }
+
+    // Fallback for custom themes without the standard CTFd language menu.
+    var cookieMatch = document.cookie.match(/(?:^|;\s*)language=([^;]*)/);
+    if (cookieMatch) {
+      try { return decodeURIComponent(cookieMatch[1]).toLowerCase(); }
+      catch (_) { return String(cookieMatch[1]).toLowerCase(); }
+    }
+    return String((navigator.languages && navigator.languages[0]) ||
+      navigator.language || "en").toLowerCase();
+  }
+
+  function historyLinkLabel() {
+    return currentLocale().indexOf("fr") === 0 ? "Notif. Fil" : "Queue Notif.";
+  }
+
+  function setHistoryLinkLabel() {
+    if (!historyLink) return;
+    var label = historyLink.querySelector("[data-queue-notification-label]");
+    if (!label) {
+      label = document.createElement("span");
+      label.setAttribute("data-queue-notification-label", "1");
+      // Preserve a pending-count badge if another script already added one.
+      Array.prototype.slice.call(historyLink.childNodes).forEach(function (node) {
+        if (node.nodeType === 3) node.remove();
+      });
+      historyLink.insertBefore(label, historyLink.firstChild);
+    }
+    label.textContent = historyLinkLabel();
+  }
+
   function mountHistoryLink() {
     var existing = document.getElementById("queue-notification-history-link");
     if (existing) {
       historyLink = existing;
+      setHistoryLinkLabel();
       return;
     }
 
@@ -102,7 +141,10 @@
     historyLink.id = "queue-notification-history-link";
     historyLink.className = "nav-link";
     historyLink.href = historyPageUrl();
-    historyLink.textContent = "Queue notifications";
+    var label = document.createElement("span");
+    label.setAttribute("data-queue-notification-label", "1");
+    label.textContent = historyLinkLabel();
+    historyLink.appendChild(label);
     item.appendChild(historyLink);
     navList.appendChild(item);
   }
