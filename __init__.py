@@ -23,6 +23,26 @@ log = logging.getLogger("ctfd.queue_challenge")
 _scheduler_lock_handle = None
 
 
+def _challenge_tag_values(challenge):
+    """Return normalized display values for the tags assigned to a challenge."""
+    values = []
+    for tag in getattr(challenge, "tags", None) or []:
+        # CTFd's Tags model stores the visible tag text in its value field.
+        # Keep fallbacks for installations/plugins that expose strings
+        # or custom tag objects instead.
+        value = tag if isinstance(tag, str) else getattr(tag, "value", None)
+        if value is None:
+            value = getattr(tag, "tag", None)
+        if value is None:
+            value = getattr(tag, "name", None)
+        if value is None:
+            continue
+        value = str(value).strip()
+        if value:
+            values.append(value)
+    return sorted(set(values), key=str.casefold)
+
+
 class QueueChallenge(CTFdStandardChallenge):
     """Native CTFd challenge type with round-based queueing and native scoring."""
 
@@ -300,23 +320,7 @@ def load(app):
         overview = []
         available_tags = {}
         for challenge in challenges:
-            challenge_tags = []
-            for tag in getattr(challenge, "tags", None) or []:
-                # CTFd's Tags model stores the visible tag text in its value field.
-                # Keep fallbacks for installations/plugins that expose strings
-                # or custom tag objects instead.
-                value = tag if isinstance(tag, str) else getattr(tag, "value", None)
-                if value is None:
-                    value = getattr(tag, "tag", None)
-                if value is None:
-                    value = getattr(tag, "name", None)
-                if value is None:
-                    continue
-                value = str(value).strip()
-                if value:
-                    challenge_tags.append(value)
-
-            challenge_tags = sorted(set(challenge_tags), key=str.casefold)
+            challenge_tags = _challenge_tag_values(challenge)
             for tag in challenge_tags:
                 available_tags.setdefault(tag.casefold(), tag)
 
@@ -349,6 +353,7 @@ def load(app):
         return render_template(
             "plugins/queue_challenge/templates/admin_detail.html",
             challenge=challenge,
+            challenge_tags=_challenge_tag_values(challenge),
             state=state,
         )
 

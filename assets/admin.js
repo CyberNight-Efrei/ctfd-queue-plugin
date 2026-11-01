@@ -4,6 +4,26 @@
   var challengeId = parseInt(root.dataset.challengeId, 10);
   var base = "/api/v1/plugins/ctfd-queue";
 
+  // Match the queue list: one deterministic pastel color for each normalized tag.
+  function colorizeChallengeTags() {
+    root.querySelectorAll(".queue-tag-chip").forEach(function (chip) {
+      var seed = String(chip.dataset.tag || chip.textContent || "")
+        .trim()
+        .toLowerCase();
+      var hash = 2166136261;
+      for (var i = 0; i < seed.length; i++) {
+        hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619);
+      }
+      hash >>>= 0;
+
+      chip.style.setProperty("--queue-tag-hue", hash % 360);
+      chip.style.setProperty("--queue-tag-saturation", (58 + ((hash >>> 9) % 16)) + "%");
+      chip.style.setProperty("--queue-tag-lightness", (91 + ((hash >>> 17) % 6)) + "%");
+    });
+  }
+
+  colorizeChallengeTags();
+
   var recentFailureLogs = {};
 
   function logApiFailure(error, operation) {
