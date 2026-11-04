@@ -68,15 +68,16 @@
     </div>
     <div class="table-responsive" role="region" aria-label="Selected participants" tabindex="0">
       <table class="table queue-table">
-        <thead><tr><th>Participant</th><th>Team</th><th>Round</th><th>Selected at</th><th></th></tr></thead>
+        <thead><tr><th>Participant</th><th>Team</th><th>Round</th><th>Selected at / elapsed</th><th></th></tr></thead>
         <tbody id="queue-selected-rows">
         {% for entry in state.selected %}
           <tr>
             <td>{{ entry.username }} <span class="text-muted small">#{{ entry.user_id }}</span></td>
             <td>{{ entry.team_name or '—' }}</td>
             <td>{{ entry.round_number or '—' }}</td>
-            <td>{{ entry.selected_at or '—' }}</td>
+            <td>{{ entry.selected_at or '—' }}<div class="small text-muted">Selected for <span class="queue-selected-timer" data-selected-timer data-selected-at="{{ entry.selected_at or '' }}">00:00:00</span></div></td>
             <td class="queue-row-actions">
+              <button class="btn btn-sm btn-outline-warning" type="button" data-action="demote" data-entry-id="{{ entry.id }}">Move to waiting</button>
               {% if entry.team_id %}
               <button class="btn btn-sm btn-outline-primary" type="button" data-action="notify-flag" data-entry-id="{{ entry.id }}"><i class="fas fa-flag mr-1" aria-hidden="true"></i>Send flag to team</button>
               {% else %}
@@ -111,6 +112,7 @@
             <td class="queue-row-actions">
               <button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="{{ entry.id }}" aria-label="Move up">↑</button>
               <button class="btn btn-sm btn-outline-secondary" data-action="move-down" data-entry-id="{{ entry.id }}" aria-label="Move down">↓</button>
+              <button class="btn btn-sm btn-outline-success" type="button" data-action="promote" data-entry-id="{{ entry.id }}">Select now</button>
               <button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="{{ entry.id }}">Remove</button>
             </td>
           </tr>
