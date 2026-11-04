@@ -700,6 +700,94 @@ class QueueService:
 
 
     @staticmethod
+    def set_entry_state(entry_id, state, position=None):
+        """Promote a waiter or return a selected participant to the waiting queue."""
+        if state not in ("waiting", "selected"):
+            raise QueueError("State must be 'waiting' or 'selected'.")
+
+        events = []
+        try:
+            initial_row = QueueEntry.query.filter_by(id=entry_id).first()
+            if initial_row is None:
+                raise QueueError("Queue entry not found.")
+            challenge = QueueService.get_challenge(initial_row.challenge_id, lock=True)
+            row = (
+                QueueEntry.query.filter_by(id=entry_id, challenge_id=challenge.id)
+                .with_for_update()
+                .first()
+            )
+            if row is None:
+                raise QueueError("Queue entry not found.")
+            if row.state not in ("waiting", "selected"):
+                raise QueueError("Only active queue participants can change state.")
+            if row.state == state:
+                challenge_id = challenge.id
+                db.session.rollback()
+                return QueueService.admin_state(challenge_id)
+            if QueueService.has_solved_challenge(challenge, row.user):
+                raise QueueError("A participant who has solved the challenge cannot be moved.")
+
+            now = _utcnow()
+            if state == "selected":
+                row.state = "selected"
+                row.selected_at = now
+                row.round_number = max(1, int(challenge.round_number or 0))
+                if challenge.round_number is None or challenge.round_number < 1:
+                    challenge.round_number = 1
+                row.left_at = None
+                row.selected_notified_at = now
+                events.append(
+                    QueueService._notification_for(
+                        row,
+                        "You have been selected!",
+                        "You have been selected for {challenge_name}!",
+                    )
+                )
+            else:
+                waiters = QueueService.waiting_entries(challenge.id)
+                max_position = len(waiters) + 1
+                if position is None:
+                    target_position = max_position
+                else:
+                    if isinstance(position, bool):
+                        raise QueueError("Queue position must be a positive integer.")
+                    try:
+                        target_position = int(position)
+                    except (TypeError, ValueError):
+                        raise QueueError("Queue position must be a positive integer.")
+                    if target_position < 1 or target_position > max_position:
+                        raise QueueError("Queue position is outside the waiting queue.")
+                row.state = "waiting"
+                row.position = target_position
+                row.round_number = None
+                row.selected_at = None
+                row.selected_notified_at = None
+                row.left_at = None
+                # Shift the existing waiters down, preserving their relative order.
+                for waiter in reversed(waiters):
+                    if waiter.position >= target_position:
+                        waiter.position += 1
+
+            QueueService._resequence(challenge.id)
+            QueueService._notify_next(challenge.id, events)
+            admin_user = get_current_user()
+            log.info(
+                "Administrator changed queue entry state challenge_id=%s entry_id=%s "
+                "state=%s position=%s admin_user_id=%s",
+                challenge.id, entry_id, state,
+                row.position if state == "waiting" else None,
+                getattr(admin_user, "id", None),
+            )
+            db.session.commit()
+            challenge_id = challenge.id
+        except Exception:
+            db.session.rollback()
+            raise
+
+        _publish_notifications(events)
+        return QueueService.admin_state(challenge_id)
+
+    @staticmethod
     def notify_flag_to_selected_team(entry_id, flag_content):
         """Send a challenge flag only to the selected participant's team."""
         events = []

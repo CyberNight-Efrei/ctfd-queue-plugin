@@ -540,6 +540,21 @@ class AdminQueueAdd(Resource):
         )
 
 
+@queue_namespace.route("/admin/entries/<int:entry_id>/state")
+class AdminQueueSetEntryState(Resource):
+    @admins_only
+    def post(self, entry_id):
+        data = _json_object()
+        raw_state = data.get("state", "")
+        state = raw_state.strip().lower() if isinstance(raw_state, str) else ""
+        position = data.get("position")
+        return _run_queue_operation(
+            lambda: QueueService.set_entry_state(entry_id, state, position),
+            operation="admin_set_entry_state",
+            entry_id=entry_id,
+        )
+
+
 @queue_namespace.route("/admin/entries/<int:entry_id>/move")
 class AdminQueueMove(Resource):
     @admins_only

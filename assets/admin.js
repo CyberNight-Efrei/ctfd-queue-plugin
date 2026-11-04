@@ -270,7 +270,9 @@
       if (isSelected) {
         return "<tr><td>" + identity + '</td><td>' + team + '</td><td>' +
           escapeHtml(entry.round_number || "—") + '</td><td>' + escapeHtml(timeLabel(entry.selected_at)) +
+          '<div class="small text-muted">Selected for <span class="queue-selected-timer" data-selected-timer data-selected-at="' + escapeHtml(entry.selected_at || "") + '">00:00:00</span></div>' +
           '</td><td class="queue-row-actions">' +
+          '<button class="btn btn-sm btn-outline-warning" data-action="demote" data-entry-id="' + escapeHtml(entry.id) + '">Move to waiting</button>' +
           (entry.team_id
             ? '<button class="btn btn-sm btn-outline-primary" data-action="notify-flag" data-entry-id="' + escapeHtml(entry.id) + '"><i class="fas fa-flag mr-1" aria-hidden="true"></i>Send flag to team</button>'
             : '<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="This participant is not associated with a team">No team</button>') +
@@ -282,9 +284,22 @@
         '</td><td class="queue-row-actions">' +
         '<button class="btn btn-sm btn-outline-secondary" data-action="move-up" data-entry-id="' + escapeHtml(entry.id) + '" aria-label="Move up">↑</button>' +
         '<button class="btn btn-sm btn-outline-secondary" data-action="move-down" data-entry-id="' + escapeHtml(entry.id) + '" aria-label="Move down">↓</button>' +
+        '<button class="btn btn-sm btn-outline-success" data-action="promote" data-entry-id="' + escapeHtml(entry.id) + '">Select now</button>' +
         '<button class="btn btn-sm btn-outline-danger" data-action="remove" data-entry-id="' + escapeHtml(entry.id) + '">Remove</button>' +
         "</td></tr>";
     }).join("");
+  }
+
+  function updateSelectedTimers() {
+    var now = Date.now();
+    root.querySelectorAll("[data-selected-timer]").forEach(function (timer) {
+      var raw = timer.getAttribute("data-selected-at");
+      if (!raw) return;
+      var normalized = raw.endsWith("Z") ? raw : raw + "Z";
+      var startedAt = new Date(normalized).getTime();
+      if (!Number.isFinite(startedAt)) return;
+      timer.textContent = duration(Math.max(0, Math.floor((now - startedAt) / 1000)));
+    });
   }
 
   function renderState(state) {
@@ -316,6 +331,7 @@
     document.getElementById("queue-interval").textContent = duration(challenge.interval_seconds);
     renderEntries("queue-selected-rows", state.selected, true);
     renderEntries("queue-waiting-rows", state.waiting, false);
+    updateSelectedTimers();
   }
 
   function refresh() {
@@ -534,7 +550,29 @@
     var entryId = parseInt(button.dataset.entryId, 10);
     var action = button.dataset.action;
     button.disabled = true;
-    if (action === "move-up" || action === "move-down") {
+    if (action === "promote" || action === "demote") {
+      var nextState = action === "promote" ? "selected" : "waiting";
+      var body = { state: nextState };
+      if (action === "demote") {
+        var rawPosition = window.prompt("Waiting queue position (leave blank to append):", "");
+        if (rawPosition === null) {
+          button.disabled = false;
+          return;
+        }
+        if (rawPosition.trim() !== "") {
+          var requestedPosition = Number(rawPosition);
+          if (!Number.isInteger(requestedPosition) || requestedPosition < 1) {
+            showFeedback("Enter a valid positive queue position.", true);
+            button.disabled = false;
+            return;
+          }
+          body.position = requestedPosition;
+        }
+      }
+      runAction(base + "/admin/entries/" + entryId + "/state", "POST", body,
+        action === "promote" ? "Participant selected and notified." : "Participant returned to the waiting queue.")
+        .then(function () { button.disabled = false; });
+    } else if (action === "move-up" || action === "move-down") {
       runAction(base + "/admin/entries/" + entryId + "/move", "POST", {
         direction: action === "move-up" ? "up" : "down"
       }, "Queue order updated.").then(function () { button.disabled = false; });
@@ -698,5 +736,6 @@
   // Keep the clock independent from API requests, including a stalled first refresh.
   renderCounters();
   window.setInterval(tickCounters, 1000);
+  window.setInterval(updateSelectedTimers, 1000);
   refresh();
 })();
