@@ -721,7 +721,9 @@ class QueueService:
             if row.state not in ("waiting", "selected"):
                 raise QueueError("Only active queue participants can change state.")
             if row.state == state:
-                return QueueService.admin_state(challenge.id)
+                challenge_id = challenge.id
+                db.session.rollback()
+                return QueueService.admin_state(challenge_id)
             if QueueService.has_solved_challenge(challenge, row.user):
                 raise QueueError("A participant who has solved the challenge cannot be moved.")
 
